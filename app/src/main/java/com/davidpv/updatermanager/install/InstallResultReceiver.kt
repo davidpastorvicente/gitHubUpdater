@@ -5,12 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
-import android.widget.Toast
 
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
-        val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+        val appId = intent.getStringExtra(EXTRA_APP_ID) ?: return
 
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -18,19 +17,23 @@ class InstallResultReceiver : BroadcastReceiver() {
                     confirmationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(confirmationIntent)
                 }
-                Toast.makeText(
-                    context,
-                    "Confirm the install in the system prompt.",
-                    Toast.LENGTH_LONG,
-                ).show()
             }
 
             PackageInstaller.STATUS_SUCCESS -> {
-                Toast.makeText(context, "APK installed successfully.", Toast.LENGTH_LONG).show()
+                InstallResultEvents.emit(
+                    InstallResultEvent(appId = appId, status = InstallResultStatus.Success),
+                )
             }
 
             else -> {
-                Toast.makeText(context, message ?: "Install failed.", Toast.LENGTH_LONG).show()
+                val resultStatus = if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
+                    InstallResultStatus.Cancelled
+                } else {
+                    InstallResultStatus.Failed
+                }
+                InstallResultEvents.emit(
+                    InstallResultEvent(appId = appId, status = resultStatus),
+                )
             }
         }
     }
@@ -42,5 +45,9 @@ class InstallResultReceiver : BroadcastReceiver() {
         } else {
             intent.getParcelableExtra(Intent.EXTRA_INTENT)
         }
+    }
+
+    private companion object {
+        const val EXTRA_APP_ID = "install_app_id"
     }
 }

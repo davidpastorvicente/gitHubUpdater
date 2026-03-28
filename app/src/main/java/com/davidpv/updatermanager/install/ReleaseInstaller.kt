@@ -23,13 +23,14 @@ class ReleaseInstaller(
     private val context: Context,
 ) {
     suspend fun install(
+        appId: String,
         asset: ReleaseAsset,
         onProgress: (InstallProgress) -> Unit,
     ) = withContext(Dispatchers.IO) {
         installMutex.withLock {
             val apkFile = prepareApkFile(asset, onProgress)
             check(apkFile.isFile) { "Prepared APK file is missing." }
-            installWithPackageInstaller(apkFile, onProgress)
+            installWithPackageInstaller(appId = appId, apkFile = apkFile, onProgress = onProgress)
         }
     }
 
@@ -156,6 +157,7 @@ class ReleaseInstaller(
     }
 
     private fun installWithPackageInstaller(
+        appId: String,
         apkFile: File,
         onProgress: (InstallProgress) -> Unit,
     ) {
@@ -179,7 +181,9 @@ class ReleaseInstaller(
             }
         }
 
-        val intent = Intent(context, InstallResultReceiver::class.java)
+        val intent = Intent(context, InstallResultReceiver::class.java).apply {
+            putExtra(EXTRA_APP_ID, appId)
+        }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             sessionId,
@@ -216,6 +220,7 @@ class ReleaseInstaller(
     private fun ByteArray.toHexString(): String = joinToString(separator = "") { "%02x".format(it) }
 
     private companion object {
+        const val EXTRA_APP_ID = "install_app_id"
         const val USER_AGENT = "UpdaterManager/0.1"
         const val APK_STORAGE_DIRECTORY_NAME = "release-downloads"
         val ILLEGAL_FILENAME_CHARS = Regex("[^A-Za-z0-9._-]")

@@ -7,7 +7,10 @@ import com.davidpv.updatermanager.data.AppRepository
 import com.davidpv.updatermanager.data.model.InstallStage
 import com.davidpv.updatermanager.data.model.InstallProgress
 import com.davidpv.updatermanager.data.model.ManagedApp
+import com.davidpv.updatermanager.install.InstallResultEvents
+import com.davidpv.updatermanager.install.InstallResultStatus
 import com.davidpv.updatermanager.install.ReleaseInstaller
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +33,14 @@ class MainViewModel(
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            InstallResultEvents.events.collectLatest { event ->
+                clearInstallProgress(event.appId)
+                if (event.status == InstallResultStatus.Success) {
+                    refresh()
+                }
+            }
+        }
         refresh()
     }
 
@@ -77,7 +88,7 @@ class MainViewModel(
         updateInstallProgress(app.id, InstallProgress(stage = InstallStage.CheckingCache))
         viewModelScope.launch {
             runCatching {
-                installer.install(asset) { progress ->
+                installer.install(app.id, asset) { progress ->
                     updateInstallProgress(app.id, progress)
                 }
             }.onFailure { error ->
