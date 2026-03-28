@@ -1,5 +1,7 @@
 package com.davidpv.updatermanager.ui
 
+import android.content.Context
+import android.content.res.Configuration
 import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,20 +34,36 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.davidpv.updatermanager.data.model.AvailabilityState
 import com.davidpv.updatermanager.data.model.InstallProgress
 import com.davidpv.updatermanager.data.model.InstallStage
 import com.davidpv.updatermanager.data.model.ManagedApp
+import com.davidpv.updatermanager.data.model.ReleaseAsset
 import com.davidpv.updatermanager.data.model.ReleaseItem
 import com.davidpv.updatermanager.ui.theme.LocalStatusPalette
+import com.davidpv.updatermanager.ui.theme.UpdaterManagerTheme
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+
+private const val LIST_ROUTE = "list"
+private const val DETAIL_ROUTE = "detail/{appId}"
+private const val DETAIL_ROUTE_PREFIX = "detail"
+private const val EXPANDED_LAYOUT_MIN_WIDTH_DP = 840
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,19 +74,121 @@ fun MainScreen(
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
 ) {
-    val selectedApp = state.apps.firstOrNull { it.id == state.selectedAppId }
-    if (selectedApp != null) {
-        AppDetailScreen(
-            app = selectedApp,
-            onBack = onCloseAppDetails,
-        )
-    } else {
-        AppListScreen(
+    val isExpandedLayout = LocalConfiguration.current.screenWidthDp >= EXPANDED_LAYOUT_MIN_WIDTH_DP
+
+    if (isExpandedLayout) {
+        ExpandedMainScreen(
             state = state,
             onRefresh = onRefresh,
             onPrimaryAction = onPrimaryAction,
             onOpenAppDetails = onOpenAppDetails,
         )
+    } else {
+        CompactMainScreen(
+            state = state,
+            onRefresh = onRefresh,
+            onPrimaryAction = onPrimaryAction,
+            onOpenAppDetails = onOpenAppDetails,
+            onCloseAppDetails = onCloseAppDetails,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompactMainScreen(
+    state: MainUiState,
+    onRefresh: () -> Unit,
+    onPrimaryAction: (ManagedApp) -> Unit,
+    onOpenAppDetails: (String) -> Unit,
+    onCloseAppDetails: () -> Unit,
+) {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = LIST_ROUTE,
+    ) {
+        composable(LIST_ROUTE) {
+            AppListScreen(
+                state = state,
+                onRefresh = onRefresh,
+                onPrimaryAction = onPrimaryAction,
+                onOpenAppDetails = { appId ->
+                    onOpenAppDetails(appId)
+                    navController.navigate("$DETAIL_ROUTE_PREFIX/$appId")
+                },
+            )
+        }
+        composable(
+            route = DETAIL_ROUTE,
+            arguments = listOf(navArgument("appId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val appId = backStackEntry.arguments?.getString("appId")
+            val app = state.apps.firstOrNull { it.id == appId }
+            if (app != null) {
+                AppDetailScreen(
+                    app = app,
+                    onBack = {
+                        onCloseAppDetails()
+                        navController.popBackStack()
+                    },
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpandedMainScreen(
+    state: MainUiState,
+    onRefresh: () -> Unit,
+    onPrimaryAction: (ManagedApp) -> Unit,
+    onOpenAppDetails: (String) -> Unit,
+) {
+    val selectedApp = state.apps.firstOrNull { it.id == state.selectedAppId }
+
+    LaunchedEffect(state.apps, state.selectedAppId) {
+        if (state.selectedAppId == null) {
+            state.apps.firstOrNull()?.let { onOpenAppDetails(it.id) }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Updater Manager") },
+                actions = {
+                    IconButton(onClick = onRefresh, enabled = !state.isRefreshing) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = "Refresh")
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Box(modifier = Modifier.weight(0.42f)) {
+                AppListContent(
+                    state = state,
+                    onPrimaryAction = onPrimaryAction,
+                    onOpenAppDetails = onOpenAppDetails,
+                )
+            }
+            Box(modifier = Modifier.weight(0.58f)) {
+                if (selectedApp != null) {
+                    AppDetailContent(app = selectedApp)
+                } else {
+                    EmptyDetailPane()
+                }
+            }
+        }
     }
 }
 
@@ -92,25 +212,42 @@ private fun AppListScreen(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            state.errorMessage?.let { message ->
-                item { ErrorCard(message = message) }
-            }
+            AppListContent(
+                state = state,
+                onPrimaryAction = onPrimaryAction,
+                onOpenAppDetails = onOpenAppDetails,
+            )
+        }
+    }
+}
 
-            items(state.apps, key = { it.id }) { app ->
-                AppCard(
-                    app = app,
-                    installProgress = state.installProgressByAppId[app.id],
-                    onPrimaryAction = { onPrimaryAction(app) },
-                    onOpenDetails = { onOpenAppDetails(app.id) },
-                )
-            }
+@Composable
+private fun AppListContent(
+    state: MainUiState,
+    onPrimaryAction: (ManagedApp) -> Unit,
+    onOpenAppDetails: (String) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        state.errorMessage?.let { message ->
+            item { ErrorCard(message = message) }
+        }
+
+        items(state.apps, key = { it.id }) { app ->
+            AppCard(
+                app = app,
+                installProgress = state.installProgressByAppId[app.id],
+                onPrimaryAction = { onPrimaryAction(app) },
+                onOpenDetails = { onOpenAppDetails(app.id) },
+            )
         }
     }
 }
@@ -133,30 +270,59 @@ private fun AppDetailScreen(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                Text(
-                    text = "Version history",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
-            item {
-                Text(
-                    text = "Showing the standard Twitter APK release history.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            AppDetailContent(app = app)
+        }
+    }
+}
 
-            items(app.history, key = { it.id }) { release ->
-                HistoryRow(release = release, isLatest = release.id == app.history.firstOrNull()?.id)
-            }
+@Composable
+private fun AppDetailContent(app: ManagedApp) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Text(
+                text = "Version history",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+        item {
+            Text(
+                text = "Showing the standard Twitter APK release history.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        items(app.history, key = { it.id }) { release ->
+            HistoryRow(release = release, isLatest = release.id == app.history.firstOrNull()?.id)
+        }
+    }
+}
+
+@Composable
+private fun EmptyDetailPane() {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 2.dp,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Select an app to view version history.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -426,10 +592,72 @@ private fun progressLabel(progress: InstallProgress): String = when (progress.st
     InstallStage.AwaitingConfirmation -> "Waiting for install confirmation"
 }
 
-private fun progressBytesLabel(context: android.content.Context, progress: InstallProgress): String {
+private fun progressBytesLabel(context: Context, progress: InstallProgress): String {
     val downloaded = Formatter.formatFileSize(context, progress.downloadedBytes)
     val total = progress.totalBytes?.let { Formatter.formatFileSize(context, it) }
     return if (total != null) "$downloaded / $total" else downloaded
 }
 
 private val DATE_FORMATTER = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AppCardPreview() {
+    UpdaterManagerTheme {
+        AppCard(
+            app = previewApps().first(),
+            installProgress = null,
+            onPrimaryAction = {},
+            onOpenDetails = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 1000)
+@Composable
+private fun ExpandedScreenPreview() {
+    val apps = previewApps()
+    UpdaterManagerTheme {
+        ExpandedMainScreen(
+            state = MainUiState(apps = apps, selectedAppId = apps.first().id),
+            onRefresh = {},
+            onPrimaryAction = {},
+            onOpenAppDetails = {},
+        )
+    }
+}
+
+private fun previewApps(): List<ManagedApp> {
+    val asset = ReleaseAsset(
+        id = 1,
+        name = "twitter-piko-v11.77.0-release.0.apk",
+        downloadUrl = "https://example.com/app.apk",
+        sizeBytes = 215_000_000,
+        sha256 = null,
+        downloadCount = 1200,
+    )
+    val history = listOf(
+        ReleaseItem(
+            id = 1,
+            versionName = "11.77.0-release.0",
+            publishedAt = Instant.parse("2026-03-28T12:00:00Z"),
+            asset = asset,
+        ),
+    )
+    return listOf(
+        ManagedApp(
+            id = "twitter",
+            displayName = "Twitter",
+            packageName = "com.twitter.android",
+            installedVersionName = "11.76.0-release.0",
+            latestVersionName = "11.77.0-release.0",
+            availabilityState = AvailabilityState.UpdateAvailable(
+                installedVersion = "11.76.0-release.0",
+                latestVersion = "11.77.0-release.0",
+            ),
+            latestAsset = asset,
+            history = history,
+        ),
+    )
+}
