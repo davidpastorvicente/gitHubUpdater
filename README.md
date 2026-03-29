@@ -9,6 +9,24 @@ Right now it is focused on `crimera/twitter-apk` and shows:
 - release history in a separate detail screen
 - download progress with APK caching to avoid unnecessary re-downloads
 
+## Adding new apps
+
+App definitions are stored in:
+
+```text
+app/src/main/assets/apps.json
+```
+
+Each entry can define:
+- app id
+- display name
+- Android package name
+- GitHub release owner/repo
+- include asset globs
+- exclude asset globs
+
+So adding a new GitHub-release based app is mostly a data change instead of a Kotlin code change.
+
 ## Tech stack
 
 - Kotlin

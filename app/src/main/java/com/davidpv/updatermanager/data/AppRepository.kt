@@ -1,6 +1,8 @@
 package com.davidpv.updatermanager.data
 
+import com.davidpv.updatermanager.data.local.AppCatalogDataSource
 import com.davidpv.updatermanager.data.local.InstalledAppInspector
+import com.davidpv.updatermanager.data.model.AppCatalogEntry
 import com.davidpv.updatermanager.data.model.AvailabilityState
 import com.davidpv.updatermanager.data.model.GitHubAssetResponse
 import com.davidpv.updatermanager.data.model.GitHubReleaseResponse
@@ -11,18 +13,20 @@ import com.davidpv.updatermanager.data.remote.GitHubReleasesService
 import java.time.Instant
 
 class AppRepository(
+    private val appCatalogDataSource: AppCatalogDataSource,
     private val releasesService: GitHubReleasesService,
     private val installedAppInspector: InstalledAppInspector,
 ) {
     suspend fun loadManagedApps(): List<ManagedApp> {
-        return supportedApps.map { supportedApp ->
+        return appCatalogDataSource.loadSupportedApps().map { supportedApp ->
             val releases = releasesService.fetchReleases(
                 owner = supportedApp.releaseOwner,
                 repo = supportedApp.releaseRepo,
+                perPage = RELEASES_PER_PAGE,
             )
                 .asSequence()
                 .filterNot { it.draft || it.prerelease }
-                .mapNotNull(::toReleaseItem)
+                .mapNotNull { toReleaseItem(release = it, app = supportedApp) }
                 .sortedByDescending(ReleaseItem::publishedAt)
                 .toList()
 
@@ -53,9 +57,12 @@ class AppRepository(
         }
     }
 
-    private fun toReleaseItem(release: GitHubReleaseResponse): ReleaseItem? {
+    private fun toReleaseItem(
+        release: GitHubReleaseResponse,
+        app: AppCatalogEntry,
+    ): ReleaseItem? {
         val asset = release.assets
-            .firstOrNull(::isPreferredTwitterAsset)
+            .firstOrNull { asset -> matchesAssetRules(asset = asset, app = app) }
             ?.toReleaseAsset()
             ?: return null
 
@@ -78,12 +85,13 @@ class AppRepository(
         )
     }
 
-    private fun isPreferredTwitterAsset(asset: GitHubAssetResponse): Boolean {
+    private fun matchesAssetRules(
+        asset: GitHubAssetResponse,
+        app: AppCatalogEntry,
+    ): Boolean {
         val name = asset.name.lowercase()
-        return name.endsWith(".apk") &&
-            "twitter-piko" in name &&
-            "material-you" !in name &&
-            !name.startsWith("x-")
+        return app.includeAssetGlobs.any { glob -> globToRegex(glob).matches(name) } &&
+            app.excludeAssetGlobs.none { glob -> globToRegex(glob).matches(name) }
     }
 
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {
@@ -104,25 +112,27 @@ class AppRepository(
         return 0
     }
 
-    private data class SupportedApp(
-        val id: String,
-        val displayName: String,
-        val packageName: String,
-        val releaseOwner: String,
-        val releaseRepo: String,
-    )
-
     private companion object {
+        const val RELEASES_PER_PAGE = 10
         val versionRegex = Regex("\\d+")
 
-        val supportedApps = listOf(
-            SupportedApp(
-                id = "twitter",
-                displayName = "Twitter",
-                packageName = "com.twitter.android",
-                releaseOwner = "crimera",
-                releaseRepo = "twitter-apk",
-            ),
-        )
+        fun globToRegex(glob: String): Regex {
+            val escaped = buildString {
+                append("^")
+                glob.lowercase().forEach { char ->
+                    when (char) {
+                        '*' -> append(".*")
+                        '?' -> append('.')
+                        '.', '(', ')', '[', ']', '{', '}', '+', '^', '$', '|', '\\' -> {
+                            append('\\')
+                            append(char)
+                        }
+                        else -> append(char)
+                    }
+                }
+                append("$")
+            }
+            return Regex(escaped)
+        }
     }
 }

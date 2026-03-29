@@ -1,0 +1,16 @@
+[
+  {
+    "id": "twitter",
+    "displayName": "Twitter",
+    "packageName": "com.twitter.android",
+    "releaseOwner": "crimera",
+    "releaseRepo": "twitter-apk",
+    "includeAssetGlobs": [
+      "*twitter-piko*.apk"
+    ],
+    "excludeAssetGlobs": [
+      "*material-you*",
+      "x-*"
+    ]
+  }
+]
