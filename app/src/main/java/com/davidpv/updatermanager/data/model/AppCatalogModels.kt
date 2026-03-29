@@ -8,5 +8,6 @@ data class AppCatalogEntry(
     val packageName: String,
     val releaseOwner: String,
     val releaseRepo: String,
-    val assetGlob: String,
+    val assetRegex: String,
+    val versionRegex: String? = null,
 )

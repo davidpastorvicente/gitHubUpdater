@@ -22,7 +22,8 @@ Each entry can define:
 - display name
 - Android package name
 - GitHub release owner/repo
-- asset glob
+- asset regex
+- optional version regex to extract the installed app version from the APK filename
 
 So adding a new GitHub-release based app is mostly a data change instead of a Kotlin code change.
 
@@ -37,7 +38,7 @@ So adding a new GitHub-release based app is mostly a data change instead of a Ko
 ## Current behavior
 
 - Fetches release data from the GitHub releases API
-- Filters assets with the `assetGlob` rule in `apps.json`
+- Filters assets with the `assetRegex` rule in `apps.json`
 - Downloads APKs into `${Environment.getExternalStorageDirectory().path}/Downloads/UpdateManager` by default
 - Lets you switch to a custom folder from Settings
 - Deletes installed APKs automatically by default, with a Settings toggle to keep them

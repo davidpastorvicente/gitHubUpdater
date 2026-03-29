@@ -4,13 +4,14 @@
     "packageName": "com.twitter.android",
     "releaseOwner": "crimera",
     "releaseRepo": "twitter-apk",
-    "assetGlob": "twitter-piko-v*.apk"
+    "assetRegex": "^twitter-piko-v.*\\.apk$"
   },
   {
     "displayName": "Instagram",
     "packageName": "com.instagram.android",
     "releaseOwner": "mamiiblt",
     "releaseRepo": "instafel",
-    "assetGlob": "instafel_uc_v*.apk"
+    "assetRegex": "^instafel_uc_v.*\\.apk$",
+    "versionRegex": "_v\\d+_([0-9.]+)\\.apk$"
   }
 ]

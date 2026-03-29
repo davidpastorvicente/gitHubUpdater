@@ -78,7 +78,11 @@ class AppRepository(
 
         return ReleaseItem(
             id = release.id,
-            versionName = release.tagName,
+            versionName = resolvedVersionName(
+                releaseTagName = release.tagName,
+                assetName = asset.name,
+                app = app,
+            ),
             publishedAt = Instant.parse(release.publishedAt),
             asset = asset,
         )
@@ -100,11 +104,24 @@ class AppRepository(
         app: AppCatalogEntry,
     ): Boolean {
         val name = asset.name.lowercase()
-        return globToRegex(app.assetGlob).matches(name)
+        return Regex(app.assetRegex).matches(name)
     }
 
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {
         return installedVersion == latestVersion || compareVersions(installedVersion, latestVersion) == 0
+    }
+
+    private fun resolvedVersionName(
+        releaseTagName: String,
+        assetName: String,
+        app: AppCatalogEntry,
+    ): String {
+        val regex = app.versionRegex?.let(::Regex) ?: return releaseTagName
+        return regex.find(assetName)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.takeIf { it.isNotBlank() }
+            ?: releaseTagName
     }
 
     private fun compareVersions(installedVersion: String, latestVersion: String): Int? {
@@ -124,24 +141,5 @@ class AppRepository(
     private companion object {
         const val RELEASES_PER_PAGE = 10
         val versionRegex = Regex("\\d+")
-
-        fun globToRegex(glob: String): Regex {
-            val escaped = buildString {
-                append("^")
-                glob.lowercase().forEach { char ->
-                    when (char) {
-                        '*' -> append(".*")
-                        '?' -> append('.')
-                        '.', '(', ')', '[', ']', '{', '}', '+', '^', '$', '|', '\\' -> {
-                            append('\\')
-                            append(char)
-                        }
-                        else -> append(char)
-                    }
-                }
-                append("$")
-            }
-            return Regex(escaped)
-        }
     }
 }
