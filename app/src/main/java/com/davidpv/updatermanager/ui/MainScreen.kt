@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,12 +32,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -74,7 +76,9 @@ fun MainScreen(
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
 ) {
-    val isExpandedLayout = LocalConfiguration.current.screenWidthDp >= EXPANDED_LAYOUT_MIN_WIDTH_DP
+    val density = LocalDensity.current
+    val containerWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
+    val isExpandedLayout = containerWidthDp >= EXPANDED_LAYOUT_MIN_WIDTH_DP.dp
 
     if (isExpandedLayout) {
         ExpandedMainScreen(
@@ -159,11 +163,6 @@ private fun ExpandedMainScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Updater Manager") },
-                actions = {
-                    IconButton(onClick = onRefresh, enabled = !state.isRefreshing) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "Refresh")
-                    }
-                },
             )
         },
     ) { innerPadding ->
@@ -177,6 +176,7 @@ private fun ExpandedMainScreen(
             Box(modifier = Modifier.weight(0.42f)) {
                 AppListContent(
                     state = state,
+                    onRefresh = onRefresh,
                     onPrimaryAction = onPrimaryAction,
                     onOpenAppDetails = onOpenAppDetails,
                 )
@@ -204,11 +204,6 @@ private fun AppListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Updater Manager") },
-                actions = {
-                    IconButton(onClick = onRefresh, enabled = !state.isRefreshing) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "Refresh")
-                    }
-                },
             )
         },
     ) { innerPadding ->
@@ -219,6 +214,7 @@ private fun AppListScreen(
         ) {
             AppListContent(
                 state = state,
+                onRefresh = onRefresh,
                 onPrimaryAction = onPrimaryAction,
                 onOpenAppDetails = onOpenAppDetails,
             )
@@ -229,25 +225,35 @@ private fun AppListScreen(
 @Composable
 private fun AppListContent(
     state: MainUiState,
+    onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onOpenAppDetails: (String) -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        state.errorMessage?.let { message ->
-            item { ErrorCard(message = message) }
-        }
+    val pullToRefreshState = rememberPullToRefreshState()
 
-        items(state.apps, key = { it.id }) { app ->
-            AppCard(
-                app = app,
-                installProgress = state.installProgressByAppId[app.id],
-                onPrimaryAction = { onPrimaryAction(app) },
-                onOpenDetails = { onOpenAppDetails(app.id) },
-            )
+    PullToRefreshBox(
+        state = pullToRefreshState,
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            state.errorMessage?.let { message ->
+                item { ErrorCard(message = message) }
+            }
+
+            items(state.apps, key = { it.id }) { app ->
+                AppCard(
+                    app = app,
+                    installProgress = state.installProgressByAppId[app.id],
+                    onPrimaryAction = { onPrimaryAction(app) },
+                    onOpenDetails = { onOpenAppDetails(app.id) },
+                )
+            }
         }
     }
 }
