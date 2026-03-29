@@ -5,10 +5,8 @@ import android.content.res.Configuration
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,9 +14,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
@@ -33,8 +31,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -49,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -509,6 +506,7 @@ private fun AppCard(
     onOpenDetails: () -> Unit,
 ) {
     val isBusy = installProgress != null
+    val canCancel = installProgress?.let(::progressCanBeCancelled) == true
     val showLatestVersion = app.latestVersionName != null && app.availabilityState !is AvailabilityState.Current
     val showInstalledVersion = app.installedVersionName != null
     val actionIcon = when (app.availabilityState) {
@@ -523,6 +521,9 @@ private fun AppCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
+        installProgress?.let { progress ->
+            AppCardProgressBar(progress = progress)
+        }
         Column(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -563,12 +564,6 @@ private fun AppCard(
                         }
                     }
 
-                    installProgress?.let { progress ->
-                        InstallProgressSection(
-                            progress = progress,
-                            onCancel = if (progressCanBeCancelled(progress)) onCancelInstall else null,
-                        )
-                    }
                 }
 
                 Row(
@@ -576,10 +571,19 @@ private fun AppCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilledIconActionButton(
-                        onClick = onPrimaryAction,
-                        enabled = app.latestAsset != null && app.availabilityState !is AvailabilityState.Current && !isBusy,
+                        onClick = if (canCancel) onCancelInstall else onPrimaryAction,
+                        enabled = if (canCancel) {
+                            true
+                        } else {
+                            app.latestAsset != null && app.availabilityState !is AvailabilityState.Current && !isBusy
+                        },
                     ) {
-                        if (isBusy) {
+                        if (canCancel) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Cancel download",
+                            )
+                        } else if (isBusy) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         } else {
                             Icon(
@@ -610,7 +614,7 @@ private fun AppIcon(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val installedIcon = remember(app.packageName, context) {
+    val installedIcon = remember(app.packageName, app.installedVersionName, context) {
         runCatching {
             context.packageManager
                 .getApplicationIcon(app.packageName)
@@ -679,77 +683,24 @@ private fun FilledIconActionButton(
 }
 
 @Composable
-private fun InstallProgressSection(
+private fun AppCardProgressBar(
     progress: InstallProgress,
-    onCancel: (() -> Unit)?,
 ) {
-    val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = progressLabel(progress),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    val progressFraction = progress.progressFraction
+    if (progressFraction != null) {
+        LinearProgressIndicator(
+            progress = { progressFraction.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
         )
-        val progressFraction = progress.progressFraction
-        if (progressFraction != null) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    progress = { progressFraction.coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = if (onCancel != null) 22.dp else 0.dp),
-                )
-                onCancel?.let { cancel ->
-                    ProgressCancelButton(onClick = cancel)
-                }
-            }
-        } else if (
-            progress.stage == InstallStage.Downloading ||
-            progress.stage == InstallStage.PreparingInstall ||
-            progress.stage == InstallStage.Verifying
-        ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = if (onCancel != null) 22.dp else 0.dp),
-                )
-                onCancel?.let { cancel ->
-                    ProgressCancelButton(onClick = cancel)
-                }
-            }
-        }
-
-        if (progress.downloadedBytes > 0L) {
-            Text(
-                text = progressBytesLabel(context, progress),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.ProgressCancelButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .align(Alignment.CenterEnd)
-            .layout { measurable, constraints ->
-                val placeable = measurable.measure(constraints)
-                layout(placeable.width, 0) {
-                    placeable.placeRelative(0, -(placeable.height / 2) + 2)
-                }
-            }
-            .size(18.dp)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+    } else if (
+        progress.stage == InstallStage.CheckingCache ||
+        progress.stage == InstallStage.UsingCache ||
+        progress.stage == InstallStage.Downloading ||
+        progress.stage == InstallStage.Verifying ||
+        progress.stage == InstallStage.PreparingInstall ||
+        progress.stage == InstallStage.AwaitingConfirmation
     ) {
-        Icon(
-            imageVector = Icons.Rounded.Close,
-            contentDescription = "Cancel download",
-            modifier = Modifier.size(14.dp),
-        )
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -863,12 +814,6 @@ private fun progressLabel(progress: InstallProgress): String = when (progress.st
     InstallStage.Verifying -> "Verifying APK"
     InstallStage.PreparingInstall -> "Preparing installer"
     InstallStage.AwaitingConfirmation -> "Waiting for install confirmation"
-}
-
-private fun progressBytesLabel(context: Context, progress: InstallProgress): String {
-    val downloaded = Formatter.formatFileSize(context, progress.downloadedBytes)
-    val total = progress.totalBytes?.let { Formatter.formatFileSize(context, it) }
-    return if (total != null) "$downloaded / $total" else downloaded
 }
 
 private val DATE_FORMATTER = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
