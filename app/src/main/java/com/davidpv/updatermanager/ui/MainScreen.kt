@@ -3,8 +3,10 @@ package com.davidpv.updatermanager.ui
 import android.content.Context
 import android.content.res.Configuration
 import android.text.format.Formatter
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -19,13 +22,14 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,14 +40,18 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -301,7 +309,7 @@ private fun AppDetailContent(app: ManagedApp) {
         }
         item {
             Text(
-                text = "Showing the standard Twitter APK release history.",
+                text = "Showing the available release history for this app.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -341,6 +349,8 @@ private fun AppCard(
     onOpenDetails: () -> Unit,
 ) {
     val isBusy = installProgress != null
+    val showLatestVersion = app.latestVersionName != null && app.availabilityState !is AvailabilityState.Current
+    val showInstalledVersion = app.installedVersionName != null
     val actionIcon = when (app.availabilityState) {
         is AvailabilityState.UpdateAvailable -> Icons.Rounded.SystemUpdateAlt
         else -> Icons.Rounded.Download
@@ -360,45 +370,63 @@ private fun AppCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = app.displayName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
+                        AppIcon(
+                            app = app,
+                            modifier = Modifier.size(52.dp),
                         )
-                        Surface(
-                            color = statusContainerColor(app.availabilityState),
-                            contentColor = statusContentColor(app.availabilityState),
-                            shape = MaterialTheme.shapes.small,
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text(
-                                text = statusLabel(app.availabilityState),
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = app.displayName,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Surface(
+                                    color = statusContainerColor(app.availabilityState),
+                                    contentColor = statusContentColor(app.availabilityState),
+                                    shape = MaterialTheme.shapes.small,
+                                ) {
+                                    Text(
+                                        text = statusLabel(app.availabilityState),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelLarge,
+                                    )
+                                }
+                            }
+
+                            if (showLatestVersion) {
+                                VersionLine(label = "Latest", value = app.latestVersionName)
+                            }
+                            if (showInstalledVersion) {
+                                VersionLine(label = "Installed", value = app.installedVersionName)
+                            }
                         }
                     }
-
-                    VersionLine(label = "Latest", value = app.latestVersionName ?: "Unavailable")
-                    VersionLine(label = "Installed", value = app.installedVersionName ?: "⏤")
 
                     installProgress?.let {
                         InstallProgressSection(progress = it)
                     }
                 }
 
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilledIconActionButton(
                         onClick = onPrimaryAction,
@@ -430,16 +458,74 @@ private fun AppCard(
 }
 
 @Composable
+private fun AppIcon(
+    app: ManagedApp,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val installedIcon = remember(app.packageName, context) {
+        runCatching {
+            context.packageManager
+                .getApplicationIcon(app.packageName)
+                .toBitmap()
+                .asImageBitmap()
+        }.getOrNull()
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        if (installedIcon != null) {
+            Image(
+                bitmap = installedIcon,
+                contentDescription = "${app.displayName} icon",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape),
+            )
+        } else {
+            val monogram = remember(app.displayName) {
+                app.displayName
+                    .trim()
+                    .firstOrNull()
+                    ?.uppercaseChar()
+                    ?.toString()
+                    ?: "?"
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = monogram,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = LocalContentColor.current,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FilledIconActionButton(
     onClick: () -> Unit,
     enabled: Boolean,
     content: @Composable () -> Unit,
 ) {
-    Button(
+    FilledIconButton(
         onClick = onClick,
         enabled = enabled,
     ) {
-        Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.size(20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             content()
         }
     }
@@ -637,30 +723,30 @@ private fun ExpandedScreenPreview() {
 private fun previewApps(): List<ManagedApp> {
     val asset = ReleaseAsset(
         id = 1,
-        name = "twitter-piko-v11.77.0-release.0.apk",
+        name = "sample-app-v1.4.0.apk",
         downloadUrl = "https://example.com/app.apk",
-        sizeBytes = 215_000_000,
+        sizeBytes = 54_000_000,
         sha256 = null,
-        downloadCount = 1200,
+        downloadCount = 120,
     )
     val history = listOf(
         ReleaseItem(
             id = 1,
-            versionName = "11.77.0-release.0",
+            versionName = "1.4.0",
             publishedAt = Instant.parse("2026-03-28T12:00:00Z"),
             asset = asset,
         ),
     )
     return listOf(
         ManagedApp(
-            id = "twitter",
-            displayName = "Twitter",
-            packageName = "com.twitter.android",
-            installedVersionName = "11.76.0-release.0",
-            latestVersionName = "11.77.0-release.0",
+            id = "sample-app",
+            displayName = "Sample app",
+            packageName = "com.example.sample",
+            installedVersionName = "1.3.0",
+            latestVersionName = "1.4.0",
             availabilityState = AvailabilityState.UpdateAvailable(
-                installedVersion = "11.76.0-release.0",
-                latestVersion = "11.77.0-release.0",
+                installedVersion = "1.3.0",
+                latestVersion = "1.4.0",
             ),
             latestAsset = asset,
             history = history,

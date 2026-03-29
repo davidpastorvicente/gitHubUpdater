@@ -2,8 +2,8 @@
 
 `updaterManager` is a small Android app for tracking and installing upstream APK releases outside of Google Play.
 
-Right now it is focused on `crimera/twitter-apk` and shows:
-- the latest available Twitter release
+Right now it is focused on one GitHub Releases source and shows:
+- the latest available app release
 - the installed version on the device, if present
 - a single action button to install or update
 - release history in a separate detail screen
@@ -38,7 +38,7 @@ So adding a new GitHub-release based app is mostly a data change instead of a Ko
 ## Current behavior
 
 - Fetches release data from the GitHub releases API
-- Filters to the standard `twitter-piko` APK variant
+- Filters assets according to the include/exclude rules in `apps.json`
 - Downloads APKs into app-private storage
 - Reuses a previously downloaded APK when it is still valid
 - Hands installation off to the Android package installer with user confirmation
