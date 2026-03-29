@@ -506,6 +506,7 @@ private fun AppCard(
 ) {
     val isBusy = installProgress != null
     val canCancel = installProgress?.let(::progressCanBeCancelled) == true
+    val canOpenDetails = app.availabilityState !is AvailabilityState.NoRemoteRelease
     val showLatestVersion = app.latestVersionName != null && app.availabilityState !is AvailabilityState.Current
     val showInstalledVersion = app.installedVersionName != null
     val actionIcon = when (app.availabilityState) {
@@ -592,7 +593,7 @@ private fun AppCard(
 
                         FilledIconActionButton(
                             onClick = onOpenDetails,
-                            enabled = true,
+                            enabled = canOpenDetails,
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.History,
