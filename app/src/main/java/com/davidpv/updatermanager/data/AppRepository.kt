@@ -103,8 +103,12 @@ class AppRepository(
         asset: GitHubAssetResponse,
         app: AppCatalogEntry,
     ): Boolean {
-        val name = asset.name.lowercase()
-        return Regex(app.assetRegex).matches(name)
+        val apkRegex = app.apkRegex
+            ?.takeIf { it.isNotBlank() }
+            ?.removeSuffix("$")
+            ?.plus("\\.apk$")
+            ?: return asset.name.endsWith(".apk")
+        return Regex(apkRegex).matches(asset.name)
     }
 
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {
@@ -116,7 +120,10 @@ class AppRepository(
         assetName: String,
         app: AppCatalogEntry,
     ): String {
-        val regex = app.versionRegex?.let(::Regex) ?: return releaseTagName
+        val versionRegex = app.versionRegex
+            ?.removeSuffix("$")?.plus("\\.apk$")
+            ?: return releaseTagName
+        val regex = Regex(versionRegex)
         return regex.find(assetName)
             ?.groupValues
             ?.getOrNull(1)
