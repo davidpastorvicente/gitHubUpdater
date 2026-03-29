@@ -14,6 +14,7 @@ data class InstallResultEvent(
     val packageName: String,
     val status: InstallResultStatus,
     val cleanupFailed: Boolean = false,
+    val failureMessage: String? = null,
 )
 
 object InstallResultEvents {

@@ -1,6 +1,5 @@
 package com.davidpv.updatermanager.ui
 
-import android.os.SystemClock
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -43,7 +42,6 @@ class MainViewModel(
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
     private val installJobsByPackageName = mutableMapOf<String, Job>()
-    private var lastRefreshElapsedRealtime = 0L
 
     init {
         viewModelScope.launch {
@@ -59,8 +57,15 @@ class MainViewModel(
         viewModelScope.launch {
             InstallResultEvents.events.collectLatest { event ->
                 clearInstallProgress(event.packageName)
-                if (event.status == InstallResultStatus.Success) {
-                    refresh()
+                when (event.status) {
+                    InstallResultStatus.Success -> refreshLocalStatus()
+                    InstallResultStatus.Failed -> {
+                        _uiState.update {
+                            it.copy(errorMessage = event.failureMessage ?: "Install failed.")
+                        }
+                    }
+
+                    InstallResultStatus.Cancelled -> Unit
                 }
             }
         }
@@ -71,9 +76,13 @@ class MainViewModel(
         if (_uiState.value.isRefreshing) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-            runCatching { repository.loadManagedApps(forceRemoteRefresh = forceRemoteRefresh) }
+            runCatching {
+                repository.loadManagedApps(
+                    forceRemoteRefresh = forceRemoteRefresh,
+                    useCachedRemoteDataOnly = false,
+                )
+            }
                 .onSuccess { apps ->
-                    lastRefreshElapsedRealtime = SystemClock.elapsedRealtime()
                     _uiState.update { state ->
                         val appsByPackageName = apps.associateBy(ManagedApp::packageName)
                         val retainedProgress = state.installProgressByPackageName.filter { (packageName, progress) ->
@@ -96,7 +105,6 @@ class MainViewModel(
                     }
                 }
                 .onFailure { error ->
-                    lastRefreshElapsedRealtime = SystemClock.elapsedRealtime()
                     _uiState.update {
                         it.copy(
                             isRefreshing = false,
@@ -111,10 +119,44 @@ class MainViewModel(
         refresh(forceRemoteRefresh = true)
     }
 
-    fun refreshIfStale() {
-        val elapsedSinceLastRefresh = SystemClock.elapsedRealtime() - lastRefreshElapsedRealtime
-        if (lastRefreshElapsedRealtime == 0L || elapsedSinceLastRefresh >= AUTO_REFRESH_MIN_INTERVAL_MILLIS) {
-            refresh(forceRemoteRefresh = false)
+    fun refreshLocalStatus() {
+        if (_uiState.value.isRefreshing) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
+            runCatching {
+                repository.loadManagedApps(
+                    forceRemoteRefresh = false,
+                    useCachedRemoteDataOnly = true,
+                )
+            }.onSuccess { apps ->
+                _uiState.update { state ->
+                    val appsByPackageName = apps.associateBy(ManagedApp::packageName)
+                    val retainedProgress = state.installProgressByPackageName.filter { (packageName, progress) ->
+                        val app = appsByPackageName[packageName]
+                        when {
+                            app == null -> false
+                            progress.stage != InstallStage.AwaitingConfirmation -> true
+                            app.installedVersionName == null -> true
+                            else -> false
+                        }
+                    }
+                    state.copy(
+                        apps = apps,
+                        selectedPackageName = state.selectedPackageName?.takeIf { selectedPackageName ->
+                            apps.any { it.packageName == selectedPackageName }
+                        },
+                        isRefreshing = false,
+                        installProgressByPackageName = retainedProgress,
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = false,
+                        errorMessage = error.message ?: "Failed to refresh apps.",
+                    )
+                }
+            }
         }
     }
 
@@ -206,8 +248,6 @@ class MainViewModel(
     }
 
     companion object {
-        private const val AUTO_REFRESH_MIN_INTERVAL_MILLIS = 60_000L
-
         fun factory(
             repository: AppRepository,
             settingsRepository: AppSettingsRepository,

@@ -8,13 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davidpv.updatermanager.install.InstallResultEvents
@@ -40,7 +36,6 @@ class MainActivity : ComponentActivity() {
                 ),
             )
             val state by viewModel.uiState.collectAsStateWithLifecycle()
-            val lifecycleOwner = LocalLifecycleOwner.current
             val latestApps by rememberUpdatedState(state.apps)
             val pickDownloadFolderLauncher = rememberLauncherForActivityResult(OpenDocumentTree()) { uri ->
                 uri ?: return@rememberLauncherForActivityResult
@@ -57,16 +52,6 @@ class MainActivity : ComponentActivity() {
                         Toast.LENGTH_SHORT,
                     ).show()
                 }
-            }
-
-            DisposableEffect(lifecycleOwner, viewModel) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        viewModel.refreshIfStale()
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
 
             LaunchedEffect(Unit) {
@@ -96,7 +81,13 @@ class MainActivity : ComponentActivity() {
                             ).show()
                         }
 
-                        InstallResultStatus.Failed -> Unit
+                        InstallResultStatus.Failed -> {
+                            Toast.makeText(
+                                this@MainActivity,
+                                event.failureMessage ?: "$displayName installation failed",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     }
                 }
             }

@@ -148,7 +148,7 @@ private fun SettingsRadioRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RadioButton(selected = selected, onClick = null)
+            RadioButton(selected = selected, onClick = onClick)
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
@@ -188,7 +188,7 @@ private fun SettingsSwitchRow(
             }
             Switch(
                 checked = checked,
-                onCheckedChange = null,
+                onCheckedChange = onCheckedChange,
             )
         }
     }

@@ -41,8 +41,17 @@ class InstallResultReceiver : BroadcastReceiver() {
                 } else {
                     InstallResultStatus.Failed
                 }
+                val failureMessage = if (resultStatus == InstallResultStatus.Failed) {
+                    installFailureMessage(intent)
+                } else {
+                    null
+                }
                 InstallResultEvents.emit(
-                    InstallResultEvent(packageName = packageName, status = resultStatus),
+                    InstallResultEvent(
+                        packageName = packageName,
+                        status = resultStatus,
+                        failureMessage = failureMessage,
+                    ),
                 )
             }
         }
@@ -61,6 +70,25 @@ class InstallResultReceiver : BroadcastReceiver() {
         const val EXTRA_PACKAGE_NAME = "install_package_name"
         const val EXTRA_APK_URI = "install_apk_uri"
         const val EXTRA_DELETE_APK_AFTER_INSTALL = "install_delete_apk_after_install"
+    }
+
+    private fun installFailureMessage(intent: Intent): String {
+        val rawMessage = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty()
+        return when {
+            rawMessage.contains("INSTALL_FAILED_INSUFFICIENT_STORAGE", ignoreCase = true) ||
+                rawMessage.contains("not enough space", ignoreCase = true) ||
+                rawMessage.contains("insufficient storage", ignoreCase = true) -> {
+                "Not enough storage space to install this APK."
+            }
+
+            rawMessage.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE", ignoreCase = true) ||
+                rawMessage.contains("signatures do not match", ignoreCase = true) -> {
+                "This APK uses a different signature than the installed app. Uninstall the current app first, then install this APK."
+            }
+
+            rawMessage.isNotBlank() -> rawMessage
+            else -> "Android rejected the APK installation."
+        }
     }
 
     private fun deleteDownloadedApk(context: Context, apkUri: String?): Boolean {

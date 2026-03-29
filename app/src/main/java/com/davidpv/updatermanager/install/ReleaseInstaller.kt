@@ -44,6 +44,7 @@ class ReleaseInstaller(
 
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        params.setAppPackageName(packageName)
         val sessionId = installer.createSession(params)
         val session = installer.openSession(sessionId)
 

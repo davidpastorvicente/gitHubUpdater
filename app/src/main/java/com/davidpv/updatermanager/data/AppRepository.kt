@@ -17,19 +17,29 @@ class AppRepository(
     private val releasesService: GitHubReleasesService,
     private val installedAppInspector: InstalledAppInspector,
 ) {
-    suspend fun loadManagedApps(forceRemoteRefresh: Boolean = false): List<ManagedApp> {
+    private val cachedReleasesByPackageName = mutableMapOf<String, List<ReleaseItem>>()
+
+    suspend fun loadManagedApps(
+        forceRemoteRefresh: Boolean = false,
+        useCachedRemoteDataOnly: Boolean = false,
+    ): List<ManagedApp> {
         return appCatalogDataSource.loadSupportedApps().map { supportedApp ->
-            val releases = releasesService.fetchReleases(
-                owner = supportedApp.releaseOwner,
-                repo = supportedApp.releaseRepo,
-                perPage = RELEASES_PER_PAGE,
-                forceRefresh = forceRemoteRefresh,
-            )
-                .asSequence()
-                .filterNot { it.draft || it.prerelease }
-                .mapNotNull { toReleaseItem(release = it, app = supportedApp) }
-                .sortedByDescending(ReleaseItem::publishedAt)
-                .toList()
+            val releases = if (useCachedRemoteDataOnly) {
+                cachedReleasesByPackageName[supportedApp.packageName].orEmpty()
+            } else {
+                releasesService.fetchReleases(
+                    owner = supportedApp.releaseOwner,
+                    repo = supportedApp.releaseRepo,
+                    perPage = RELEASES_PER_PAGE,
+                    forceRefresh = forceRemoteRefresh,
+                )
+                    .asSequence()
+                    .filterNot { it.draft || it.prerelease }
+                    .mapNotNull { toReleaseItem(release = it, app = supportedApp) }
+                    .sortedByDescending(ReleaseItem::publishedAt)
+                    .toList()
+                    .also { cachedReleasesByPackageName[supportedApp.packageName] = it }
+            }
 
             val latestRelease = releases.firstOrNull()
             val installedApp = installedAppInspector.inspectInstalledApp(supportedApp.packageName)
