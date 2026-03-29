@@ -17,12 +17,13 @@ class AppRepository(
     private val releasesService: GitHubReleasesService,
     private val installedAppInspector: InstalledAppInspector,
 ) {
-    suspend fun loadManagedApps(): List<ManagedApp> {
+    suspend fun loadManagedApps(forceRemoteRefresh: Boolean = false): List<ManagedApp> {
         return appCatalogDataSource.loadSupportedApps().map { supportedApp ->
             val releases = releasesService.fetchReleases(
                 owner = supportedApp.releaseOwner,
                 repo = supportedApp.releaseRepo,
                 perPage = RELEASES_PER_PAGE,
+                forceRefresh = forceRemoteRefresh,
             )
                 .asSequence()
                 .filterNot { it.draft || it.prerelease }

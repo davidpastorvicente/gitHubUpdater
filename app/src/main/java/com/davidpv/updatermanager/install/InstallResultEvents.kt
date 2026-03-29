@@ -13,6 +13,7 @@ enum class InstallResultStatus {
 data class InstallResultEvent(
     val packageName: String,
     val status: InstallResultStatus,
+    val cleanupFailed: Boolean = false,
 )
 
 object InstallResultEvents {

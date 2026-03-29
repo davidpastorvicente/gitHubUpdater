@@ -7,7 +7,8 @@ Right now it is focused on one GitHub Releases source and shows:
 - the installed version on the device, if present
 - a single action button to install or update
 - release history in a separate detail screen
-- download progress with APK caching to avoid unnecessary re-downloads
+- download progress with reusable APK caching
+- a settings page for theme, download location, and APK cleanup
 
 ## Adding new apps
 
@@ -36,8 +37,10 @@ So adding a new GitHub-release based app is mostly a data change instead of a Ko
 ## Current behavior
 
 - Fetches release data from the GitHub releases API
-- Filters assets according to the include/exclude rules in `apps.json`
-- Downloads APKs into app-private storage
+- Filters assets with the `assetGlob` rule in `apps.json`
+- Downloads APKs into `${Environment.getExternalStorageDirectory().path}/Downloads/UpdateManager` by default
+- Lets you switch to a custom folder from Settings
+- Deletes installed APKs automatically by default, with a Settings toggle to keep them
 - Reuses a previously downloaded APK when it is still valid
 - Hands installation off to the Android package installer with user confirmation
 

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.net.Uri
 import android.os.Build
 
 class InstallResultReceiver : BroadcastReceiver() {
@@ -20,8 +21,17 @@ class InstallResultReceiver : BroadcastReceiver() {
             }
 
             PackageInstaller.STATUS_SUCCESS -> {
+                val cleanupFailed = if (intent.getBooleanExtra(EXTRA_DELETE_APK_AFTER_INSTALL, false)) {
+                    deleteDownloadedApk(context, intent.getStringExtra(EXTRA_APK_URI))
+                } else {
+                    false
+                }
                 InstallResultEvents.emit(
-                    InstallResultEvent(packageName = packageName, status = InstallResultStatus.Success),
+                    InstallResultEvent(
+                        packageName = packageName,
+                        status = InstallResultStatus.Success,
+                        cleanupFailed = cleanupFailed,
+                    ),
                 )
             }
 
@@ -49,5 +59,19 @@ class InstallResultReceiver : BroadcastReceiver() {
 
     private companion object {
         const val EXTRA_PACKAGE_NAME = "install_package_name"
+        const val EXTRA_APK_URI = "install_apk_uri"
+        const val EXTRA_DELETE_APK_AFTER_INSTALL = "install_delete_apk_after_install"
+    }
+
+    private fun deleteDownloadedApk(context: Context, apkUri: String?): Boolean {
+        val uri = apkUri?.let(Uri::parse) ?: return true
+        return try {
+            context.contentResolver.delete(uri, null, null)
+            false
+        } catch (_: SecurityException) {
+            true
+        } catch (_: IllegalArgumentException) {
+            true
+        }
     }
 }

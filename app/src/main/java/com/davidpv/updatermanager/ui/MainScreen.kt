@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -67,6 +68,7 @@ import com.davidpv.updatermanager.data.model.InstallStage
 import com.davidpv.updatermanager.data.model.ManagedApp
 import com.davidpv.updatermanager.data.model.ReleaseAsset
 import com.davidpv.updatermanager.data.model.ReleaseItem
+import com.davidpv.updatermanager.data.model.ThemeMode
 import com.davidpv.updatermanager.ui.theme.LocalStatusPalette
 import com.davidpv.updatermanager.ui.theme.UpdaterManagerTheme
 import java.time.Instant
@@ -77,6 +79,7 @@ import java.time.format.FormatStyle
 private const val LIST_ROUTE = "list"
 private const val DETAIL_ROUTE = "detail/{packageName}"
 private const val DETAIL_ROUTE_PREFIX = "detail"
+private const val SETTINGS_ROUTE = "settings"
 private const val EXPANDED_LAYOUT_MIN_WIDTH_DP = 840
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,6 +89,13 @@ fun MainScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+    onCloseSettings: () -> Unit,
+    onSetThemeMode: (ThemeMode) -> Unit,
+    onSetDynamicColor: (Boolean) -> Unit,
+    onSetDeleteApkAfterInstall: (Boolean) -> Unit,
+    onPickDownloadFolder: () -> Unit,
+    onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
 ) {
@@ -99,6 +109,12 @@ fun MainScreen(
             onRefresh = onRefresh,
             onPrimaryAction = onPrimaryAction,
             onCancelInstall = onCancelInstall,
+            onOpenSettings = onOpenSettings,
+            onSetThemeMode = onSetThemeMode,
+            onSetDynamicColor = onSetDynamicColor,
+            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
+            onPickDownloadFolder = onPickDownloadFolder,
+            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
         )
     } else {
@@ -107,6 +123,13 @@ fun MainScreen(
             onRefresh = onRefresh,
             onPrimaryAction = onPrimaryAction,
             onCancelInstall = onCancelInstall,
+            onOpenSettings = onOpenSettings,
+            onCloseSettings = onCloseSettings,
+            onSetThemeMode = onSetThemeMode,
+            onSetDynamicColor = onSetDynamicColor,
+            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
+            onPickDownloadFolder = onPickDownloadFolder,
+            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
             onCloseAppDetails = onCloseAppDetails,
         )
@@ -120,6 +143,13 @@ private fun CompactMainScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+    onCloseSettings: () -> Unit,
+    onSetThemeMode: (ThemeMode) -> Unit,
+    onSetDynamicColor: (Boolean) -> Unit,
+    onSetDeleteApkAfterInstall: (Boolean) -> Unit,
+    onPickDownloadFolder: () -> Unit,
+    onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
 ) {
@@ -135,6 +165,10 @@ private fun CompactMainScreen(
                 onRefresh = onRefresh,
                 onPrimaryAction = onPrimaryAction,
                 onCancelInstall = onCancelInstall,
+                onOpenSettings = {
+                    onOpenSettings()
+                    navController.navigate(SETTINGS_ROUTE)
+                },
                 onOpenAppDetails = { packageName ->
                     onOpenAppDetails(packageName)
                     navController.navigate("$DETAIL_ROUTE_PREFIX/$packageName")
@@ -150,12 +184,30 @@ private fun CompactMainScreen(
             if (app != null) {
                 AppDetailScreen(
                     app = app,
+                    onOpenSettings = {
+                        onOpenSettings()
+                        navController.navigate(SETTINGS_ROUTE)
+                    },
                     onBack = {
                         onCloseAppDetails()
                         navController.popBackStack()
                     },
                 )
             }
+        }
+        composable(SETTINGS_ROUTE) {
+            SettingsRouteScreen(
+                state = state,
+                onBack = {
+                    onCloseSettings()
+                    navController.popBackStack()
+                },
+                onSetThemeMode = onSetThemeMode,
+                onSetDynamicColor = onSetDynamicColor,
+                onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
+                onPickDownloadFolder = onPickDownloadFolder,
+                onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
+            )
         }
     }
 }
@@ -167,6 +219,12 @@ private fun ExpandedMainScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+    onSetThemeMode: (ThemeMode) -> Unit,
+    onSetDynamicColor: (Boolean) -> Unit,
+    onSetDeleteApkAfterInstall: (Boolean) -> Unit,
+    onPickDownloadFolder: () -> Unit,
+    onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
 ) {
     val selectedApp = state.apps.firstOrNull { it.packageName == state.selectedPackageName }
@@ -181,6 +239,11 @@ private fun ExpandedMainScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Updater Manager") },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Rounded.Settings, contentDescription = "Settings")
+                    }
+                },
             )
         },
     ) { innerPadding ->
@@ -201,7 +264,17 @@ private fun ExpandedMainScreen(
                 )
             }
             Box(modifier = Modifier.weight(0.58f)) {
-                if (selectedApp != null) {
+                if (state.isSettingsOpen) {
+                    SettingsContent(
+                        settings = state.settings,
+                        downloadLocationSummary = state.downloadLocationSummary,
+                        onSetThemeMode = onSetThemeMode,
+                        onSetDynamicColor = onSetDynamicColor,
+                        onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
+                        onPickDownloadFolder = onPickDownloadFolder,
+                        onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
+                    )
+                } else if (selectedApp != null) {
                     AppDetailContent(app = selectedApp)
                 } else {
                     EmptyDetailPane()
@@ -218,12 +291,18 @@ private fun AppListScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Updater Manager") },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Rounded.Settings, contentDescription = "Settings")
+                    }
+                },
             )
         },
     ) { innerPadding ->
@@ -308,6 +387,7 @@ private fun AppListContent(
 @Composable
 private fun AppDetailScreen(
     app: ManagedApp,
+    onOpenSettings: () -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -317,6 +397,11 @@ private fun AppDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Rounded.Settings, contentDescription = "Settings")
                     }
                 },
             )
@@ -329,6 +414,42 @@ private fun AppDetailScreen(
         ) {
             AppDetailContent(app = app)
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsRouteScreen(
+    state: MainUiState,
+    onBack: () -> Unit,
+    onSetThemeMode: (ThemeMode) -> Unit,
+    onSetDynamicColor: (Boolean) -> Unit,
+    onSetDeleteApkAfterInstall: (Boolean) -> Unit,
+    onPickDownloadFolder: () -> Unit,
+    onUseDefaultDownloadLocation: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        SettingsContent(
+            settings = state.settings,
+            downloadLocationSummary = state.downloadLocationSummary,
+            onSetThemeMode = onSetThemeMode,
+            onSetDynamicColor = onSetDynamicColor,
+            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
+            onPickDownloadFolder = onPickDownloadFolder,
+            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
+            modifier = Modifier.padding(innerPadding),
+        )
     }
 }
 
@@ -777,6 +898,12 @@ private fun ExpandedScreenPreview() {
             onRefresh = {},
             onPrimaryAction = {},
             onCancelInstall = {},
+            onOpenSettings = {},
+            onSetThemeMode = {},
+            onSetDynamicColor = {},
+            onSetDeleteApkAfterInstall = {},
+            onPickDownloadFolder = {},
+            onUseDefaultDownloadLocation = {},
             onOpenAppDetails = {},
         )
     }
