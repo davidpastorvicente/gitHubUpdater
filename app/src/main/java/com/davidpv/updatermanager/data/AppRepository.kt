@@ -45,7 +45,6 @@ class AppRepository(
             }
 
             ManagedApp(
-                id = supportedApp.id,
                 displayName = supportedApp.displayName,
                 packageName = supportedApp.packageName,
                 installedVersionName = installedApp?.versionName,
@@ -90,8 +89,7 @@ class AppRepository(
         app: AppCatalogEntry,
     ): Boolean {
         val name = asset.name.lowercase()
-        return app.includeAssetGlobs.any { glob -> globToRegex(glob).matches(name) } &&
-            app.excludeAssetGlobs.none { glob -> globToRegex(glob).matches(name) }
+        return globToRegex(app.assetGlob).matches(name)
     }
 
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {

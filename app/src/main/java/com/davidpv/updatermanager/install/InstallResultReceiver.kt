@@ -9,7 +9,7 @@ import android.os.Build
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
-        val appId = intent.getStringExtra(EXTRA_APP_ID) ?: return
+        val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: return
 
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -21,7 +21,7 @@ class InstallResultReceiver : BroadcastReceiver() {
 
             PackageInstaller.STATUS_SUCCESS -> {
                 InstallResultEvents.emit(
-                    InstallResultEvent(appId = appId, status = InstallResultStatus.Success),
+                    InstallResultEvent(packageName = packageName, status = InstallResultStatus.Success),
                 )
             }
 
@@ -32,7 +32,7 @@ class InstallResultReceiver : BroadcastReceiver() {
                     InstallResultStatus.Failed
                 }
                 InstallResultEvents.emit(
-                    InstallResultEvent(appId = appId, status = resultStatus),
+                    InstallResultEvent(packageName = packageName, status = resultStatus),
                 )
             }
         }
@@ -48,6 +48,6 @@ class InstallResultReceiver : BroadcastReceiver() {
     }
 
     private companion object {
-        const val EXTRA_APP_ID = "install_app_id"
+        const val EXTRA_PACKAGE_NAME = "install_package_name"
     }
 }

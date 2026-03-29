@@ -19,9 +19,9 @@ import kotlinx.coroutines.launch
 
 data class MainUiState(
     val apps: List<ManagedApp> = emptyList(),
-    val selectedAppId: String? = null,
+    val selectedPackageName: String? = null,
     val isRefreshing: Boolean = false,
-    val installProgressByAppId: Map<String, InstallProgress> = emptyMap(),
+    val installProgressByPackageName: Map<String, InstallProgress> = emptyMap(),
     val errorMessage: String? = null,
 )
 
@@ -35,7 +35,7 @@ class MainViewModel(
     init {
         viewModelScope.launch {
             InstallResultEvents.events.collectLatest { event ->
-                clearInstallProgress(event.appId)
+                clearInstallProgress(event.packageName)
                 if (event.status == InstallResultStatus.Success) {
                     refresh()
                 }
@@ -50,9 +50,9 @@ class MainViewModel(
             runCatching { repository.loadManagedApps() }
                 .onSuccess { apps ->
                     _uiState.update { state ->
-                        val appsById = apps.associateBy(ManagedApp::id)
-                        val retainedProgress = state.installProgressByAppId.filter { (appId, progress) ->
-                            val app = appsById[appId]
+                        val appsByPackageName = apps.associateBy(ManagedApp::packageName)
+                        val retainedProgress = state.installProgressByPackageName.filter { (packageName, progress) ->
+                            val app = appsByPackageName[packageName]
                             when {
                                 app == null -> false
                                 progress.stage != InstallStage.AwaitingConfirmation -> true
@@ -62,11 +62,11 @@ class MainViewModel(
                         }
                         state.copy(
                             apps = apps,
-                            selectedAppId = state.selectedAppId?.takeIf { selectedId ->
-                                apps.any { it.id == selectedId }
+                            selectedPackageName = state.selectedPackageName?.takeIf { selectedPackageName ->
+                                apps.any { it.packageName == selectedPackageName }
                             },
                             isRefreshing = false,
-                            installProgressByAppId = retainedProgress,
+                            installProgressByPackageName = retainedProgress,
                         )
                     }
                 }
@@ -83,16 +83,16 @@ class MainViewModel(
 
     fun onPrimaryAction(app: ManagedApp) {
         val asset = app.latestAsset ?: return
-        if (_uiState.value.installProgressByAppId.containsKey(app.id)) return
+        if (_uiState.value.installProgressByPackageName.containsKey(app.packageName)) return
 
-        updateInstallProgress(app.id, InstallProgress(stage = InstallStage.CheckingCache))
+        updateInstallProgress(app.packageName, InstallProgress(stage = InstallStage.CheckingCache))
         viewModelScope.launch {
             runCatching {
-                installer.install(app.id, asset) { progress ->
-                    updateInstallProgress(app.id, progress)
+                installer.install(app.packageName, asset) { progress ->
+                    updateInstallProgress(app.packageName, progress)
                 }
             }.onFailure { error ->
-                clearInstallProgress(app.id)
+                clearInstallProgress(app.packageName)
                 _uiState.update {
                     it.copy(errorMessage = error.message ?: "Install failed.")
                 }
@@ -100,26 +100,26 @@ class MainViewModel(
         }
     }
 
-    fun openAppDetails(appId: String) {
-        _uiState.update { it.copy(selectedAppId = appId) }
+    fun openAppDetails(packageName: String) {
+        _uiState.update { it.copy(selectedPackageName = packageName) }
     }
 
     fun closeAppDetails() {
-        _uiState.update { it.copy(selectedAppId = null) }
+        _uiState.update { it.copy(selectedPackageName = null) }
     }
 
-    private fun updateInstallProgress(appId: String, progress: InstallProgress) {
+    private fun updateInstallProgress(packageName: String, progress: InstallProgress) {
         _uiState.update { state ->
             state.copy(
-                installProgressByAppId = state.installProgressByAppId + (appId to progress),
+                installProgressByPackageName = state.installProgressByPackageName + (packageName to progress),
                 errorMessage = null,
             )
         }
     }
 
-    private fun clearInstallProgress(appId: String) {
+    private fun clearInstallProgress(packageName: String) {
         _uiState.update { state ->
-            state.copy(installProgressByAppId = state.installProgressByAppId - appId)
+            state.copy(installProgressByPackageName = state.installProgressByPackageName - packageName)
         }
     }
 

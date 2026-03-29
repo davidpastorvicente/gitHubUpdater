@@ -71,7 +71,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 private const val LIST_ROUTE = "list"
-private const val DETAIL_ROUTE = "detail/{appId}"
+private const val DETAIL_ROUTE = "detail/{packageName}"
 private const val DETAIL_ROUTE_PREFIX = "detail"
 private const val EXPANDED_LAYOUT_MIN_WIDTH_DP = 840
 
@@ -126,18 +126,18 @@ private fun CompactMainScreen(
                 state = state,
                 onRefresh = onRefresh,
                 onPrimaryAction = onPrimaryAction,
-                onOpenAppDetails = { appId ->
-                    onOpenAppDetails(appId)
-                    navController.navigate("$DETAIL_ROUTE_PREFIX/$appId")
+                onOpenAppDetails = { packageName ->
+                    onOpenAppDetails(packageName)
+                    navController.navigate("$DETAIL_ROUTE_PREFIX/$packageName")
                 },
             )
         }
         composable(
             route = DETAIL_ROUTE,
-            arguments = listOf(navArgument("appId") { type = NavType.StringType }),
+            arguments = listOf(navArgument("packageName") { type = NavType.StringType }),
         ) { backStackEntry ->
-            val appId = backStackEntry.arguments?.getString("appId")
-            val app = state.apps.firstOrNull { it.id == appId }
+            val packageName = backStackEntry.arguments?.getString("packageName")
+            val app = state.apps.firstOrNull { it.packageName == packageName }
             if (app != null) {
                 AppDetailScreen(
                     app = app,
@@ -159,11 +159,11 @@ private fun ExpandedMainScreen(
     onPrimaryAction: (ManagedApp) -> Unit,
     onOpenAppDetails: (String) -> Unit,
 ) {
-    val selectedApp = state.apps.firstOrNull { it.id == state.selectedAppId }
+    val selectedApp = state.apps.firstOrNull { it.packageName == state.selectedPackageName }
 
-    LaunchedEffect(state.apps, state.selectedAppId) {
-        if (state.selectedAppId == null) {
-            state.apps.firstOrNull()?.let { onOpenAppDetails(it.id) }
+    LaunchedEffect(state.apps, state.selectedPackageName) {
+        if (state.selectedPackageName == null) {
+            state.apps.firstOrNull()?.let { onOpenAppDetails(it.packageName) }
         }
     }
 
@@ -238,6 +238,16 @@ private fun AppListContent(
     onOpenAppDetails: (String) -> Unit,
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
+    val groupedApps = state.apps.groupBy { app -> statusLabel(app.availabilityState) }
+    val orderedSectionTitles = buildList {
+        listOf("Update available", "Updated", "Not installed").forEach { title ->
+            if (groupedApps.containsKey(title)) add(title)
+        }
+        groupedApps.keys
+            .filterNot { it in this }
+            .sorted()
+            .forEach(::add)
+    }
 
     PullToRefreshBox(
         state = pullToRefreshState,
@@ -254,13 +264,26 @@ private fun AppListContent(
                 item { ErrorCard(message = message) }
             }
 
-            items(state.apps, key = { it.id }) { app ->
-                AppCard(
-                    app = app,
-                    installProgress = state.installProgressByAppId[app.id],
-                    onPrimaryAction = { onPrimaryAction(app) },
-                    onOpenDetails = { onOpenAppDetails(app.id) },
-                )
+            orderedSectionTitles.forEach { sectionTitle ->
+                item(key = "section-$sectionTitle") {
+                    Text(
+                        text = sectionTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                items(
+                    items = groupedApps.getValue(sectionTitle),
+                    key = { it.packageName },
+                ) { app ->
+                    AppCard(
+                        app = app,
+                        installProgress = state.installProgressByPackageName[app.packageName],
+                        onPrimaryAction = { onPrimaryAction(app) },
+                        onOpenDetails = { onOpenAppDetails(app.packageName) },
+                    )
+                }
             }
         }
     }
@@ -388,27 +411,11 @@ private fun AppCard(
                         Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = app.displayName,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                Surface(
-                                    color = statusContainerColor(app.availabilityState),
-                                    contentColor = statusContentColor(app.availabilityState),
-                                    shape = MaterialTheme.shapes.small,
-                                ) {
-                                    Text(
-                                        text = statusLabel(app.availabilityState),
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        style = MaterialTheme.typography.labelLarge,
-                                    )
-                                }
-                            }
+                            Text(
+                                text = app.displayName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
 
                             if (showLatestVersion) {
                                 VersionLine(label = "Latest", value = app.latestVersionName)
@@ -649,24 +656,6 @@ private fun ErrorCard(message: String) {
     }
 }
 
-@Composable
-private fun statusContainerColor(state: AvailabilityState) = when (state) {
-    AvailabilityState.NoRemoteRelease -> MaterialTheme.colorScheme.surfaceVariant
-    AvailabilityState.NotInstalled -> MaterialTheme.colorScheme.surfaceVariant
-    is AvailabilityState.Current -> LocalStatusPalette.current.successContainer
-    is AvailabilityState.UpdateAvailable -> LocalStatusPalette.current.warningContainer
-    is AvailabilityState.InstalledVersionUnknown -> MaterialTheme.colorScheme.surfaceVariant
-}
-
-@Composable
-private fun statusContentColor(state: AvailabilityState) = when (state) {
-    AvailabilityState.NoRemoteRelease -> MaterialTheme.colorScheme.onSurfaceVariant
-    AvailabilityState.NotInstalled -> MaterialTheme.colorScheme.onSurfaceVariant
-    is AvailabilityState.Current -> LocalStatusPalette.current.onSuccessContainer
-    is AvailabilityState.UpdateAvailable -> LocalStatusPalette.current.onWarningContainer
-    is AvailabilityState.InstalledVersionUnknown -> MaterialTheme.colorScheme.onSurfaceVariant
-}
-
 private fun statusLabel(state: AvailabilityState): String = when (state) {
     AvailabilityState.NoRemoteRelease -> "Unavailable"
     AvailabilityState.NotInstalled -> "Not installed"
@@ -712,7 +701,7 @@ private fun ExpandedScreenPreview() {
     val apps = previewApps()
     UpdaterManagerTheme {
         ExpandedMainScreen(
-            state = MainUiState(apps = apps, selectedAppId = apps.first().id),
+            state = MainUiState(apps = apps, selectedPackageName = apps.first().packageName),
             onRefresh = {},
             onPrimaryAction = {},
             onOpenAppDetails = {},
@@ -739,7 +728,6 @@ private fun previewApps(): List<ManagedApp> {
     )
     return listOf(
         ManagedApp(
-            id = "sample-app",
             displayName = "Sample app",
             packageName = "com.example.sample",
             installedVersionName = "1.3.0",

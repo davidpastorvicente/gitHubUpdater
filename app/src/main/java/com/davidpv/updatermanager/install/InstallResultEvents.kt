@@ -11,7 +11,7 @@ enum class InstallResultStatus {
 }
 
 data class InstallResultEvent(
-    val appId: String,
+    val packageName: String,
     val status: InstallResultStatus,
 )
 

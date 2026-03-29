@@ -18,12 +18,10 @@ app/src/main/assets/apps.json
 ```
 
 Each entry can define:
-- app id
 - display name
 - Android package name
 - GitHub release owner/repo
-- include asset globs
-- exclude asset globs
+- asset glob
 
 So adding a new GitHub-release based app is mostly a data change instead of a Kotlin code change.
 

@@ -1,16 +1,16 @@
 [
   {
-    "id": "twitter",
     "displayName": "Twitter",
     "packageName": "com.twitter.android",
     "releaseOwner": "crimera",
     "releaseRepo": "twitter-apk",
-    "includeAssetGlobs": [
-      "*twitter-piko*.apk"
-    ],
-    "excludeAssetGlobs": [
-      "*material-you*",
-      "x-*"
-    ]
+    "assetGlob": "twitter-piko-v*.apk"
+  },
+  {
+    "displayName": "Instagram",
+    "packageName": "com.instagram.android",
+    "releaseOwner": "mamiiblt",
+    "releaseRepo": "instafel",
+    "assetGlob": "instafel_uc_v*.apk"
   }
 ]
