@@ -5,12 +5,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.davidpv.updatermanager.data.AppRepository
+import com.davidpv.updatermanager.data.local.AppCatalogRepository
 import com.davidpv.updatermanager.data.local.AppSettingsRepository
+import com.davidpv.updatermanager.data.model.AppCatalogEntry
 import com.davidpv.updatermanager.data.model.AppSettings
+import com.davidpv.updatermanager.data.model.GitHubReleaseResponse
 import com.davidpv.updatermanager.data.model.InstallStage
 import com.davidpv.updatermanager.data.model.InstallProgress
 import com.davidpv.updatermanager.data.model.ManagedApp
 import com.davidpv.updatermanager.data.model.ThemeMode
+import com.davidpv.updatermanager.data.remote.GitHubReleasesService
 import com.davidpv.updatermanager.install.InstallResultEvents
 import com.davidpv.updatermanager.install.InstallResultStatus
 import com.davidpv.updatermanager.install.ReleaseInstaller
@@ -36,7 +40,9 @@ data class MainUiState(
 
 class MainViewModel(
     private val repository: AppRepository,
+    private val catalogRepository: AppCatalogRepository,
     private val settingsRepository: AppSettingsRepository,
+    private val releasesService: GitHubReleasesService,
     private val installer: ReleaseInstaller,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
@@ -232,6 +238,46 @@ class MainViewModel(
         settingsRepository.setCustomDownloadTreeUri(uri)
     }
 
+    fun addApp(entry: AppCatalogEntry) {
+        catalogRepository.addApp(entry)
+        refresh()
+    }
+
+    fun updateApp(originalPackageName: String, entry: AppCatalogEntry) {
+        catalogRepository.updateApp(originalPackageName, entry)
+        refresh()
+    }
+
+    fun deleteApp(packageName: String) {
+        catalogRepository.deleteApp(packageName)
+        _uiState.update { state ->
+            state.copy(
+                apps = state.apps.filter { it.packageName != packageName },
+                selectedPackageName = state.selectedPackageName?.takeIf { it != packageName },
+            )
+        }
+        refresh()
+    }
+
+    fun importApps(json: String) {
+        runCatching {
+            val entries = importJson
+                .decodeFromString<List<AppCatalogEntry>>(json)
+            catalogRepository.importApps(entries)
+            refresh()
+        }.onFailure { error ->
+            _uiState.update { it.copy(errorMessage = error.message ?: "Import failed.") }
+        }
+    }
+
+    fun exportAppsJson(): String = catalogRepository.exportAppsJson()
+
+    fun catalogEntry(packageName: String): AppCatalogEntry? =
+        catalogRepository.loadSupportedApps().firstOrNull { it.packageName == packageName }
+
+    suspend fun testFetchReleases(owner: String, repo: String): List<GitHubReleaseResponse> =
+        releasesService.fetchReleases(owner = owner, repo = repo, perPage = 10, forceRefresh = true)
+
     private fun updateInstallProgress(packageName: String, progress: InstallProgress) {
         _uiState.update { state ->
             state.copy(
@@ -248,14 +294,18 @@ class MainViewModel(
     }
 
     companion object {
+        private val importJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
         fun factory(
             repository: AppRepository,
+            catalogRepository: AppCatalogRepository,
             settingsRepository: AppSettingsRepository,
+            releasesService: GitHubReleasesService,
             installer: ReleaseInstaller,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return MainViewModel(repository, settingsRepository, installer) as T
+                return MainViewModel(repository, catalogRepository, settingsRepository, releasesService, installer) as T
             }
         }
     }

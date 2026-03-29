@@ -13,6 +13,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
+import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.compose.runtime.LaunchedEffect
@@ -43,12 +45,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val application = application as UpdaterManagerApplication
-            val releaseInstaller = application.container.releaseInstaller
+            val container = application.container
             val viewModel: MainViewModel = viewModel(
                 factory = MainViewModel.factory(
-                    repository = application.container.appRepository,
-                    settingsRepository = application.container.appSettingsRepository,
-                    installer = releaseInstaller,
+                    repository = container.appRepository,
+                    catalogRepository = container.appCatalogRepository,
+                    settingsRepository = container.appSettingsRepository,
+                    releasesService = container.releasesService,
+                    installer = container.releaseInstaller,
                 ),
             )
             val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,6 +72,32 @@ class MainActivity : ComponentActivity() {
                         "Unable to keep access to the selected folder",
                         Toast.LENGTH_SHORT,
                     ).show()
+                }
+            }
+
+            val importConfigLauncher = rememberLauncherForActivityResult(OpenDocument()) { uri ->
+                uri ?: return@rememberLauncherForActivityResult
+                runCatching {
+                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                        ?: throw IllegalStateException("Could not read file.")
+                }.onSuccess { json ->
+                    viewModel.importApps(json)
+                    Toast.makeText(this@MainActivity, "Configuration imported", Toast.LENGTH_SHORT).show()
+                }.onFailure { e ->
+                    Toast.makeText(this@MainActivity, e.message ?: "Import failed", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            val exportConfigLauncher = rememberLauncherForActivityResult(CreateDocument("application/json")) { uri ->
+                uri ?: return@rememberLauncherForActivityResult
+                runCatching {
+                    val json = viewModel.exportAppsJson()
+                    contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(json) }
+                        ?: throw IllegalStateException("Could not write file.")
+                }.onSuccess {
+                    Toast.makeText(this@MainActivity, "Configuration exported", Toast.LENGTH_SHORT).show()
+                }.onFailure { e ->
+                    Toast.makeText(this@MainActivity, e.message ?: "Export failed", Toast.LENGTH_LONG).show()
                 }
             }
 
@@ -145,6 +175,13 @@ class MainActivity : ComponentActivity() {
                     onUseDefaultDownloadLocation = viewModel::useDefaultDownloadLocation,
                     onOpenAppDetails = viewModel::openAppDetails,
                     onCloseAppDetails = viewModel::closeAppDetails,
+                    onAddApp = viewModel::addApp,
+                    onUpdateApp = viewModel::updateApp,
+                    onDeleteApp = viewModel::deleteApp,
+                    onTestFetchReleases = viewModel::testFetchReleases,
+                    onGetCatalogEntry = viewModel::catalogEntry,
+                    onImportConfig = { importConfigLauncher.launch(arrayOf("application/json", "*/*")) },
+                    onExportConfig = { exportConfigLauncher.launch("apps.json") },
                 )
             }
         }

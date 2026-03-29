@@ -36,6 +36,8 @@ fun SettingsContent(
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     modifier: Modifier = Modifier,
+    onImportConfig: () -> Unit = {},
+    onExportConfig: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -109,6 +111,30 @@ fun SettingsContent(
                                 Text("Use default")
                             }
                         }
+                    }
+                }
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "App Configuration",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Import or export your app list as a JSON file.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Button(onClick = onImportConfig) {
+                        Text("Import")
+                    }
+                    OutlinedButton(onClick = onExportConfig) {
+                        Text("Export")
                     }
                 }
             }

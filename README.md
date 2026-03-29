@@ -2,21 +2,17 @@
 
 `updaterManager` is a small Android app for tracking and installing upstream APK releases outside of Google Play.
 
-Right now it is focused on one GitHub Releases source and shows:
+Features:
 - the latest available app release
 - the installed version on the device, if present
 - a single action button to install or update
 - release history in a separate detail screen
 - download progress with reusable APK caching
-- a settings page for theme, download location, and APK cleanup
+- a settings page for theme, download location, APK cleanup, and config import/export
 
-## Adding new apps
+## Managing apps
 
-App definitions are stored in:
-
-```text
-app/src/main/assets/apps.json
-```
+Apps are configured directly inside the app. Tap the **+** button on the main screen to add a new app configuration.
 
 Each entry can define:
 - display name
@@ -25,7 +21,25 @@ Each entry can define:
 - optional APK regex without the `.apk` suffix
 - optional version regex without the `.apk` suffix to extract the installed app version from the APK filename
 
-So adding a new GitHub-release based app is mostly a data change instead of a Kotlin code change.
+You can **Test** a configuration before saving to verify it fetches releases and matches APK assets.
+
+To edit or delete an existing app, open its version history and tap the **edit** icon.
+
+## Import / Export
+
+From Settings, you can import or export your app list as a JSON file. The JSON format is:
+
+```json
+[
+  {
+    "displayName": "Twitter",
+    "packageName": "com.twitter.android",
+    "releaseOwner": "crimera",
+    "releaseRepo": "twitter-apk",
+    "apkRegex": "^twitter-piko-v.*"
+  }
+]
+```
 
 ## Tech stack
 
@@ -38,10 +52,10 @@ So adding a new GitHub-release based app is mostly a data change instead of a Ko
 ## Current behavior
 
 - Fetches release data from the GitHub releases API
-- Filters assets with the optional `apkRegex` rule in `apps.json`, then enforces the `.apk` suffix internally
+- Filters assets with the optional `apkRegex` rule, then enforces the `.apk` suffix internally
 - If `apkRegex` is omitted, any `.apk` asset is eligible
 - Applies the same internal `.apk` suffix rule to `versionRegex`
-- Downloads APKs into `${Environment.getExternalStorageDirectory().path}/Downloads/UpdateManager` by default
+- Downloads APKs into `Downloads/UpdateManager` by default
 - Lets you switch to a custom folder from Settings
 - Deletes installed APKs automatically by default, with a Settings toggle to keep them
 - Reuses a previously downloaded APK when it is still valid

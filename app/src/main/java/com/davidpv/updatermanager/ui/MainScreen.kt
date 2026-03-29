@@ -18,8 +18,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
@@ -28,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -41,7 +44,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +64,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.davidpv.updatermanager.data.model.AppCatalogEntry
 import com.davidpv.updatermanager.data.model.AvailabilityState
+import com.davidpv.updatermanager.data.model.GitHubReleaseResponse
 import com.davidpv.updatermanager.data.model.InstallProgress
 import com.davidpv.updatermanager.data.model.InstallStage
 import com.davidpv.updatermanager.data.model.ManagedApp
@@ -76,6 +84,9 @@ private const val LIST_ROUTE = "list"
 private const val DETAIL_ROUTE = "detail/{packageName}"
 private const val DETAIL_ROUTE_PREFIX = "detail"
 private const val SETTINGS_ROUTE = "settings"
+private const val ADD_APP_ROUTE = "add_app"
+private const val EDIT_APP_ROUTE = "edit_app/{packageName}"
+private const val EDIT_APP_ROUTE_PREFIX = "edit_app"
 private const val EXPANDED_LAYOUT_MIN_WIDTH_DP = 840
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,6 +105,13 @@ fun MainScreen(
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
+    onAddApp: (AppCatalogEntry) -> Unit,
+    onUpdateApp: (String, AppCatalogEntry) -> Unit,
+    onDeleteApp: (String) -> Unit,
+    onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
+    onGetCatalogEntry: (String) -> AppCatalogEntry?,
+    onImportConfig: () -> Unit,
+    onExportConfig: () -> Unit,
 ) {
     val density = LocalDensity.current
     val containerWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
@@ -112,6 +130,13 @@ fun MainScreen(
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
+            onAddApp = onAddApp,
+            onUpdateApp = onUpdateApp,
+            onDeleteApp = onDeleteApp,
+            onTestFetchReleases = onTestFetchReleases,
+            onGetCatalogEntry = onGetCatalogEntry,
+            onImportConfig = onImportConfig,
+            onExportConfig = onExportConfig,
         )
     } else {
         CompactMainScreen(
@@ -128,6 +153,13 @@ fun MainScreen(
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
             onCloseAppDetails = onCloseAppDetails,
+            onAddApp = onAddApp,
+            onUpdateApp = onUpdateApp,
+            onDeleteApp = onDeleteApp,
+            onTestFetchReleases = onTestFetchReleases,
+            onGetCatalogEntry = onGetCatalogEntry,
+            onImportConfig = onImportConfig,
+            onExportConfig = onExportConfig,
         )
     }
 }
@@ -148,6 +180,13 @@ private fun CompactMainScreen(
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
+    onAddApp: (AppCatalogEntry) -> Unit,
+    onUpdateApp: (String, AppCatalogEntry) -> Unit,
+    onDeleteApp: (String) -> Unit,
+    onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
+    onGetCatalogEntry: (String) -> AppCatalogEntry?,
+    onImportConfig: () -> Unit,
+    onExportConfig: () -> Unit,
 ) {
     val navController = rememberNavController()
 
@@ -169,6 +208,7 @@ private fun CompactMainScreen(
                     onOpenAppDetails(packageName)
                     navController.navigate("$DETAIL_ROUTE_PREFIX/$packageName")
                 },
+                onAddApp = { navController.navigate(ADD_APP_ROUTE) },
             )
         }
         composable(
@@ -188,6 +228,9 @@ private fun CompactMainScreen(
                         onCloseAppDetails()
                         navController.popBackStack()
                     },
+                    onEditApp = {
+                        navController.navigate("$EDIT_APP_ROUTE_PREFIX/${app.packageName}")
+                    },
                 )
             }
         }
@@ -203,6 +246,40 @@ private fun CompactMainScreen(
                 onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
                 onPickDownloadFolder = onPickDownloadFolder,
                 onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
+                onImportConfig = onImportConfig,
+                onExportConfig = onExportConfig,
+            )
+        }
+        composable(ADD_APP_ROUTE) {
+            AddEditAppScreen(
+                existingEntry = null,
+                onSave = { entry ->
+                    onAddApp(entry)
+                    navController.popBackStack()
+                },
+                onDelete = null,
+                onTest = onTestFetchReleases,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = EDIT_APP_ROUTE,
+            arguments = listOf(navArgument("packageName") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val packageName = backStackEntry.arguments?.getString("packageName") ?: return@composable
+            val existingEntry = onGetCatalogEntry(packageName) ?: return@composable
+            AddEditAppScreen(
+                existingEntry = existingEntry,
+                onSave = { entry ->
+                    onUpdateApp(packageName, entry)
+                    navController.popBackStack()
+                },
+                onDelete = {
+                    onDeleteApp(packageName)
+                    navController.popBackStack(LIST_ROUTE, inclusive = false)
+                },
+                onTest = onTestFetchReleases,
+                onBack = { navController.popBackStack() },
             )
         }
     }
@@ -222,11 +299,20 @@ private fun ExpandedMainScreen(
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
+    onAddApp: (AppCatalogEntry) -> Unit,
+    onUpdateApp: (String, AppCatalogEntry) -> Unit,
+    onDeleteApp: (String) -> Unit,
+    onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
+    onGetCatalogEntry: (String) -> AppCatalogEntry?,
+    onImportConfig: () -> Unit,
+    onExportConfig: () -> Unit,
 ) {
     val selectedApp = state.apps.firstOrNull { it.packageName == state.selectedPackageName }
+    var editingPackageName by remember { mutableStateOf<String?>(null) }
+    var isAddingApp by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.apps, state.selectedPackageName) {
-        if (state.selectedPackageName == null) {
+        if (state.selectedPackageName == null && !isAddingApp && editingPackageName == null) {
             state.apps.firstOrNull()?.let { onOpenAppDetails(it.packageName) }
         }
     }
@@ -242,6 +328,14 @@ private fun ExpandedMainScreen(
                 },
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                isAddingApp = true
+                editingPackageName = null
+            }) {
+                Icon(Icons.Rounded.Add, contentDescription = "Add app")
+            }
+        },
     ) { innerPadding ->
         Row(
             modifier = Modifier
@@ -256,24 +350,67 @@ private fun ExpandedMainScreen(
                     onRefresh = onRefresh,
                     onPrimaryAction = onPrimaryAction,
                     onCancelInstall = onCancelInstall,
-                    onOpenAppDetails = onOpenAppDetails,
+                    onOpenAppDetails = { packageName ->
+                        isAddingApp = false
+                        editingPackageName = null
+                        onOpenAppDetails(packageName)
+                    },
                 )
             }
             Box(modifier = Modifier.weight(0.58f)) {
-                if (state.isSettingsOpen) {
-                    SettingsContent(
-                        settings = state.settings,
-                        downloadLocationSummary = state.downloadLocationSummary,
-                        onSetThemeMode = onSetThemeMode,
-                        onSetDynamicColor = onSetDynamicColor,
-                        onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
-                        onPickDownloadFolder = onPickDownloadFolder,
-                        onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
-                    )
-                } else if (selectedApp != null) {
-                    AppDetailContent(app = selectedApp)
-                } else {
-                    EmptyDetailPane()
+                when {
+                    state.isSettingsOpen -> {
+                        SettingsContent(
+                            settings = state.settings,
+                            downloadLocationSummary = state.downloadLocationSummary,
+                            onSetThemeMode = onSetThemeMode,
+                            onSetDynamicColor = onSetDynamicColor,
+                            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
+                            onPickDownloadFolder = onPickDownloadFolder,
+                            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
+                            onImportConfig = onImportConfig,
+                            onExportConfig = onExportConfig,
+                        )
+                    }
+                    isAddingApp -> {
+                        AddEditAppScreen(
+                            existingEntry = null,
+                            onSave = { entry ->
+                                onAddApp(entry)
+                                isAddingApp = false
+                            },
+                            onDelete = null,
+                            onTest = onTestFetchReleases,
+                            onBack = { isAddingApp = false },
+                        )
+                    }
+                    editingPackageName != null -> {
+                        val existingEntry = onGetCatalogEntry(editingPackageName!!)
+                        if (existingEntry != null) {
+                            AddEditAppScreen(
+                                existingEntry = existingEntry,
+                                onSave = { entry ->
+                                    onUpdateApp(editingPackageName!!, entry)
+                                    editingPackageName = null
+                                },
+                                onDelete = {
+                                    onDeleteApp(editingPackageName!!)
+                                    editingPackageName = null
+                                },
+                                onTest = onTestFetchReleases,
+                                onBack = { editingPackageName = null },
+                            )
+                        }
+                    }
+                    selectedApp != null -> {
+                        ExpandedAppDetailContent(
+                            app = selectedApp,
+                            onEditApp = { editingPackageName = selectedApp.packageName },
+                        )
+                    }
+                    else -> {
+                        EmptyDetailPane()
+                    }
                 }
             }
         }
@@ -289,6 +426,7 @@ private fun AppListScreen(
     onCancelInstall: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
+    onAddApp: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -300,6 +438,11 @@ private fun AppListScreen(
                     }
                 },
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onAddApp) {
+                Icon(Icons.Rounded.Add, contentDescription = "Add app")
+            }
         },
     ) { innerPadding ->
         Box(
@@ -385,6 +528,7 @@ private fun AppDetailScreen(
     app: ManagedApp,
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
+    onEditApp: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -396,6 +540,9 @@ private fun AppDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onEditApp) {
+                        Icon(Icons.Rounded.Edit, contentDescription = "Edit app configuration")
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Rounded.Settings, contentDescription = "Settings")
                     }
@@ -423,6 +570,8 @@ private fun SettingsRouteScreen(
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
+    onImportConfig: () -> Unit,
+    onExportConfig: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -445,6 +594,8 @@ private fun SettingsRouteScreen(
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             modifier = Modifier.padding(innerPadding),
+            onImportConfig = onImportConfig,
+            onExportConfig = onExportConfig,
         )
     }
 }
@@ -473,6 +624,32 @@ private fun AppDetailContent(app: ManagedApp) {
         items(app.history, key = { it.id }) { release ->
             HistoryRow(release = release, isLatest = release.id == app.history.firstOrNull()?.id)
         }
+    }
+}
+
+@Composable
+private fun ExpandedAppDetailContent(
+    app: ManagedApp,
+    onEditApp: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = app.displayName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            IconButton(onClick = onEditApp) {
+                Icon(Icons.Rounded.Edit, contentDescription = "Edit app configuration")
+            }
+        }
+        AppDetailContent(app = app)
     }
 }
 
@@ -850,6 +1027,13 @@ private fun ExpandedScreenPreview() {
             onPickDownloadFolder = {},
             onUseDefaultDownloadLocation = {},
             onOpenAppDetails = {},
+            onAddApp = {},
+            onUpdateApp = { _, _ -> },
+            onDeleteApp = {},
+            onTestFetchReleases = { _, _ -> emptyList() },
+            onGetCatalogEntry = { null },
+            onImportConfig = {},
+            onExportConfig = {},
         )
     }
 }

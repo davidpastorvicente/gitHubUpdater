@@ -1,6 +1,6 @@
 package com.davidpv.updatermanager.data
 
-import com.davidpv.updatermanager.data.local.AppCatalogDataSource
+import com.davidpv.updatermanager.data.local.AppCatalogRepository
 import com.davidpv.updatermanager.data.local.InstalledAppInspector
 import com.davidpv.updatermanager.data.model.AppCatalogEntry
 import com.davidpv.updatermanager.data.model.AvailabilityState
@@ -13,7 +13,7 @@ import com.davidpv.updatermanager.data.remote.GitHubReleasesService
 import java.time.Instant
 
 class AppRepository(
-    private val appCatalogDataSource: AppCatalogDataSource,
+    private val appCatalogRepository: AppCatalogRepository,
     private val releasesService: GitHubReleasesService,
     private val installedAppInspector: InstalledAppInspector,
 ) {
@@ -23,7 +23,7 @@ class AppRepository(
         forceRemoteRefresh: Boolean = false,
         useCachedRemoteDataOnly: Boolean = false,
     ): List<ManagedApp> {
-        return appCatalogDataSource.loadSupportedApps().map { supportedApp ->
+        return appCatalogRepository.loadSupportedApps().map { supportedApp ->
             val releases = if (useCachedRemoteDataOnly) {
                 cachedReleasesByPackageName[supportedApp.packageName].orEmpty()
             } else {
