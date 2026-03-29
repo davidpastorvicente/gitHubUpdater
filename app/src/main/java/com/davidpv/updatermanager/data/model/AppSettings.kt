@@ -1,9 +1,6 @@
 package com.davidpv.updatermanager.data.model
 
-import android.os.Environment
-
-val DEFAULT_DOWNLOAD_DIRECTORY_DISPLAY_PATH =
-    "${Environment.getExternalStorageDirectory().path}/Downloads/UpdaterManager"
+const val DEFAULT_DOWNLOAD_DIRECTORY_DISPLAY_PATH = "Downloads/UpdaterManager"
 
 enum class ThemeMode {
     System,

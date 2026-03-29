@@ -1,6 +1,5 @@
 package com.davidpv.updatermanager.ui
 
-import android.content.Context
 import android.content.res.Configuration
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
@@ -521,87 +520,96 @@ private fun AppCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        installProgress?.let { progress ->
-            AppCardProgressBar(progress = progress)
-        }
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AppIcon(
-                            app = app,
-                            modifier = Modifier.size(52.dp),
-                        )
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = app.displayName,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-
-                            if (showLatestVersion) {
-                                VersionLine(label = "Latest", value = app.latestVersionName)
-                            }
-                            if (showInstalledVersion) {
-                                VersionLine(label = "Installed", value = app.installedVersionName)
-                            }
-                        }
-                    }
-
-                }
-
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledIconActionButton(
-                        onClick = if (canCancel) onCancelInstall else onPrimaryAction,
-                        enabled = if (canCancel) {
-                            true
-                        } else {
-                            app.latestAsset != null && app.availabilityState !is AvailabilityState.Current && !isBusy
-                        },
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        if (canCancel) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = "Cancel download",
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AppIcon(
+                                app = app,
+                                modifier = Modifier.size(52.dp),
                             )
-                        } else if (isBusy) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
+
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = app.displayName,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+
+                                if (showLatestVersion) {
+                                    VersionLine(label = "Latest", value = app.latestVersionName)
+                                }
+                                if (showInstalledVersion) {
+                                    VersionLine(label = "Installed", value = app.installedVersionName)
+                                }
+                            }
+                        }
+
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        FilledIconActionButton(
+                            onClick = if (canCancel) onCancelInstall else onPrimaryAction,
+                            enabled = if (canCancel) {
+                                true
+                            } else {
+                                app.latestAsset != null && app.availabilityState !is AvailabilityState.Current && !isBusy
+                            },
+                        ) {
+                            if (canCancel) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Cancel download",
+                                )
+                            } else if (isBusy) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(
+                                    imageVector = actionIcon,
+                                    contentDescription = actionDescription,
+                                )
+                            }
+                        }
+
+                        FilledIconActionButton(
+                            onClick = onOpenDetails,
+                            enabled = true,
+                        ) {
                             Icon(
-                                imageVector = actionIcon,
-                                contentDescription = actionDescription,
+                                imageVector = Icons.Rounded.History,
+                                contentDescription = "Open version history",
                             )
                         }
                     }
+                }
+            }
 
-                    FilledIconActionButton(
-                        onClick = onOpenDetails,
-                        enabled = true,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.History,
-                            contentDescription = "Open version history",
-                        )
-                    }
+            installProgress?.let { progress ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
+                ) {
+                    AppCardProgressBar(progress = progress)
                 }
             }
         }
@@ -805,15 +813,6 @@ private fun statusLabel(state: AvailabilityState): String = when (state) {
     is AvailabilityState.Current -> "Updated"
     is AvailabilityState.UpdateAvailable -> "Update available"
     is AvailabilityState.InstalledVersionUnknown -> "Updated"
-}
-
-private fun progressLabel(progress: InstallProgress): String = when (progress.stage) {
-    InstallStage.CheckingCache -> "Checking cached APK"
-    InstallStage.UsingCache -> "Using cached APK"
-    InstallStage.Downloading -> "Downloading APK"
-    InstallStage.Verifying -> "Verifying APK"
-    InstallStage.PreparingInstall -> "Preparing installer"
-    InstallStage.AwaitingConfirmation -> "Waiting for install confirmation"
 }
 
 private val DATE_FORMATTER = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)

@@ -1,18 +1,31 @@
 package com.davidpv.updatermanager
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.davidpv.updatermanager.data.model.InstallProgress
+import com.davidpv.updatermanager.data.model.InstallStage
+import com.davidpv.updatermanager.data.model.ManagedApp
 import com.davidpv.updatermanager.install.InstallResultEvents
 import com.davidpv.updatermanager.install.InstallResultStatus
 import com.davidpv.updatermanager.ui.MainScreen
@@ -21,9 +34,12 @@ import com.davidpv.updatermanager.ui.theme.UpdaterManagerTheme
 import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
+    private val activeDownloadNotificationIds = mutableSetOf<Int>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ensureDownloadNotificationChannel()
 
         setContent {
             val application = application as UpdaterManagerApplication
@@ -37,6 +53,7 @@ class MainActivity : ComponentActivity() {
             )
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             val latestApps by rememberUpdatedState(state.apps)
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(RequestPermission()) { }
             val pickDownloadFolderLauncher = rememberLauncherForActivityResult(OpenDocumentTree()) { uri ->
                 uri ?: return@rememberLauncherForActivityResult
                 try {
@@ -51,6 +68,17 @@ class MainActivity : ComponentActivity() {
                         "Unable to keep access to the selected folder",
                         Toast.LENGTH_SHORT,
                     ).show()
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        Manifest.permission.POST_NOTIFICATIONS,
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
 
@@ -92,6 +120,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(state.installProgressByPackageName, latestApps) {
+                syncDownloadNotifications(
+                    progressByPackageName = state.installProgressByPackageName,
+                    apps = latestApps,
+                )
+            }
+
             UpdaterManagerTheme(
                 themeMode = state.settings.themeMode,
                 dynamicColor = state.settings.useDynamicColor,
@@ -113,5 +148,95 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun ensureDownloadNotificationChannel() {
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        val channel = NotificationChannel(
+            DOWNLOAD_CHANNEL_ID,
+            "Downloads",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Shows updater download progress"
+        }
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun syncDownloadNotifications(
+        progressByPackageName: Map<String, InstallProgress>,
+        apps: List<ManagedApp>,
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val notificationManager = NotificationManagerCompat.from(this)
+        val currentNotificationIds = progressByPackageName.keys.map(::downloadNotificationIdFor).toSet()
+        (activeDownloadNotificationIds - currentNotificationIds).forEach(notificationManager::cancel)
+        activeDownloadNotificationIds.clear()
+        activeDownloadNotificationIds += currentNotificationIds
+
+        progressByPackageName.forEach { (packageName, progress) ->
+            val displayName = apps.firstOrNull { it.packageName == packageName }?.displayName ?: "App"
+            notificationManager.notify(
+                downloadNotificationIdFor(packageName),
+                NotificationCompat.Builder(this, DOWNLOAD_CHANNEL_ID)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle(displayName)
+                    .setContentText(downloadNotificationText(progress))
+                    .setSubText(downloadNotificationSubtext(progress))
+                    .setOnlyAlertOnce(true)
+                    .setOngoing(true)
+                    .setSilent(true)
+                    .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                    .applyDownloadProgress(progress)
+                    .build(),
+            )
+        }
+    }
+
+    private fun NotificationCompat.Builder.applyDownloadProgress(progress: InstallProgress): NotificationCompat.Builder {
+        val totalBytes = progress.totalBytes
+        val downloadedBytes = progress.downloadedBytes
+        val progressValue = if (totalBytes != null && totalBytes > 0L) {
+            ((downloadedBytes.coerceAtLeast(0L) * 100L) / totalBytes).toInt().coerceIn(0, 100)
+        } else {
+            null
+        }
+        return if (progressValue != null) {
+            setProgress(100, progressValue, false)
+        } else {
+            setProgress(0, 0, true)
+        }
+    }
+
+    private fun downloadNotificationText(progress: InstallProgress): String {
+        val downloaded = Formatter.formatFileSize(this, progress.downloadedBytes)
+        val total = progress.totalBytes?.takeIf { it > 0L }?.let { Formatter.formatFileSize(this, it) }
+        return if (total != null && progress.downloadedBytes > 0L) {
+            "$downloaded / $total"
+        } else {
+            downloadNotificationSubtext(progress)
+        }
+    }
+
+    private fun downloadNotificationSubtext(progress: InstallProgress): String = when (progress.stage) {
+        InstallStage.CheckingCache -> "Checking cached APK"
+        InstallStage.UsingCache -> "Using cached APK"
+        InstallStage.Downloading -> "Downloading"
+        InstallStage.Verifying -> "Verifying APK"
+        InstallStage.PreparingInstall -> "Preparing installer"
+        InstallStage.AwaitingConfirmation -> "Waiting for install confirmation"
+    }
+
+    private fun downloadNotificationIdFor(packageName: String): Int = packageName.hashCode()
+
+    private companion object {
+        const val DOWNLOAD_CHANNEL_ID = "download_progress"
     }
 }
