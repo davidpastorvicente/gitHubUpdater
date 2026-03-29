@@ -5,7 +5,9 @@ import android.content.res.Configuration
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
@@ -45,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -81,6 +85,7 @@ fun MainScreen(
     state: MainUiState,
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
+    onCancelInstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
 ) {
@@ -93,6 +98,7 @@ fun MainScreen(
             state = state,
             onRefresh = onRefresh,
             onPrimaryAction = onPrimaryAction,
+            onCancelInstall = onCancelInstall,
             onOpenAppDetails = onOpenAppDetails,
         )
     } else {
@@ -100,6 +106,7 @@ fun MainScreen(
             state = state,
             onRefresh = onRefresh,
             onPrimaryAction = onPrimaryAction,
+            onCancelInstall = onCancelInstall,
             onOpenAppDetails = onOpenAppDetails,
             onCloseAppDetails = onCloseAppDetails,
         )
@@ -112,6 +119,7 @@ private fun CompactMainScreen(
     state: MainUiState,
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
+    onCancelInstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
 ) {
@@ -126,6 +134,7 @@ private fun CompactMainScreen(
                 state = state,
                 onRefresh = onRefresh,
                 onPrimaryAction = onPrimaryAction,
+                onCancelInstall = onCancelInstall,
                 onOpenAppDetails = { packageName ->
                     onOpenAppDetails(packageName)
                     navController.navigate("$DETAIL_ROUTE_PREFIX/$packageName")
@@ -157,6 +166,7 @@ private fun ExpandedMainScreen(
     state: MainUiState,
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
+    onCancelInstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
 ) {
     val selectedApp = state.apps.firstOrNull { it.packageName == state.selectedPackageName }
@@ -186,6 +196,7 @@ private fun ExpandedMainScreen(
                     state = state,
                     onRefresh = onRefresh,
                     onPrimaryAction = onPrimaryAction,
+                    onCancelInstall = onCancelInstall,
                     onOpenAppDetails = onOpenAppDetails,
                 )
             }
@@ -206,6 +217,7 @@ private fun AppListScreen(
     state: MainUiState,
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
+    onCancelInstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
 ) {
     Scaffold(
@@ -224,6 +236,7 @@ private fun AppListScreen(
                 state = state,
                 onRefresh = onRefresh,
                 onPrimaryAction = onPrimaryAction,
+                onCancelInstall = onCancelInstall,
                 onOpenAppDetails = onOpenAppDetails,
             )
         }
@@ -235,6 +248,7 @@ private fun AppListContent(
     state: MainUiState,
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
+    onCancelInstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
@@ -281,6 +295,7 @@ private fun AppListContent(
                         app = app,
                         installProgress = state.installProgressByPackageName[app.packageName],
                         onPrimaryAction = { onPrimaryAction(app) },
+                        onCancelInstall = { onCancelInstall(app.packageName) },
                         onOpenDetails = { onOpenAppDetails(app.packageName) },
                     )
                 }
@@ -369,6 +384,7 @@ private fun AppCard(
     app: ManagedApp,
     installProgress: InstallProgress?,
     onPrimaryAction: () -> Unit,
+    onCancelInstall: () -> Unit,
     onOpenDetails: () -> Unit,
 ) {
     val isBusy = installProgress != null
@@ -426,8 +442,11 @@ private fun AppCard(
                         }
                     }
 
-                    installProgress?.let {
-                        InstallProgressSection(progress = it)
+                    installProgress?.let { progress ->
+                        InstallProgressSection(
+                            progress = progress,
+                            onCancel = if (progressCanBeCancelled(progress)) onCancelInstall else null,
+                        )
                     }
                 }
 
@@ -539,7 +558,10 @@ private fun FilledIconActionButton(
 }
 
 @Composable
-private fun InstallProgressSection(progress: InstallProgress) {
+private fun InstallProgressSection(
+    progress: InstallProgress,
+    onCancel: (() -> Unit)?,
+) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -549,16 +571,32 @@ private fun InstallProgressSection(progress: InstallProgress) {
         )
         val progressFraction = progress.progressFraction
         if (progressFraction != null) {
-            LinearProgressIndicator(
-                progress = { progressFraction.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                LinearProgressIndicator(
+                    progress = { progressFraction.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = if (onCancel != null) 22.dp else 0.dp),
+                )
+                onCancel?.let { cancel ->
+                    ProgressCancelButton(onClick = cancel)
+                }
+            }
         } else if (
             progress.stage == InstallStage.Downloading ||
             progress.stage == InstallStage.PreparingInstall ||
             progress.stage == InstallStage.Verifying
         ) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Box(modifier = Modifier.fillMaxWidth()) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = if (onCancel != null) 22.dp else 0.dp),
+                )
+                onCancel?.let { cancel ->
+                    ProgressCancelButton(onClick = cancel)
+                }
+            }
         }
 
         if (progress.downloadedBytes > 0L) {
@@ -569,6 +607,39 @@ private fun InstallProgressSection(progress: InstallProgress) {
             )
         }
     }
+}
+
+@Composable
+private fun BoxScope.ProgressCancelButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .align(Alignment.CenterEnd)
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                layout(placeable.width, 0) {
+                    placeable.placeRelative(0, -(placeable.height / 2) + 2)
+                }
+            }
+            .size(18.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Close,
+            contentDescription = "Cancel download",
+            modifier = Modifier.size(14.dp),
+        )
+    }
+}
+
+private fun progressCanBeCancelled(progress: InstallProgress): Boolean = when (progress.stage) {
+    InstallStage.CheckingCache,
+    InstallStage.UsingCache,
+    InstallStage.Downloading,
+    InstallStage.Verifying,
+    InstallStage.PreparingInstall,
+    -> true
+    InstallStage.AwaitingConfirmation -> false
 }
 
 @Composable
@@ -690,6 +761,7 @@ private fun AppCardPreview() {
             app = previewApps().first(),
             installProgress = null,
             onPrimaryAction = {},
+            onCancelInstall = {},
             onOpenDetails = {},
         )
     }
@@ -704,6 +776,7 @@ private fun ExpandedScreenPreview() {
             state = MainUiState(apps = apps, selectedPackageName = apps.first().packageName),
             onRefresh = {},
             onPrimaryAction = {},
+            onCancelInstall = {},
             onOpenAppDetails = {},
         )
     }

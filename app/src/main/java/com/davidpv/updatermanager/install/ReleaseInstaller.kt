@@ -7,7 +7,10 @@ import android.content.pm.PackageInstaller
 import com.davidpv.updatermanager.data.model.InstallProgress
 import com.davidpv.updatermanager.data.model.InstallStage
 import com.davidpv.updatermanager.data.model.ReleaseAsset
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -34,7 +37,7 @@ class ReleaseInstaller(
         }
     }
 
-    private fun prepareApkFile(
+    private suspend fun prepareApkFile(
         asset: ReleaseAsset,
         onProgress: (InstallProgress) -> Unit,
     ): File {
@@ -62,7 +65,9 @@ class ReleaseInstaller(
         }
 
         val digest = MessageDigest.getInstance("SHA-256")
-        val connection = URL(asset.downloadUrl).openConnection() as HttpURLConnection
+        val connection = withContext(Dispatchers.IO) {
+            URL(asset.downloadUrl).openConnection()
+        } as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 20_000
         connection.readTimeout = 60_000
@@ -75,23 +80,33 @@ class ReleaseInstaller(
         val totalBytes = connection.contentLengthLong.takeIf { it > 0L } ?: asset.sizeBytes.takeIf { it > 0L }
         var downloadedBytes = 0L
 
-        connection.inputStream.buffered().use { input ->
-            DigestOutputStream(FileOutputStream(temporaryFile), digest).use { output ->
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                while (true) {
-                    val bytesRead = input.read(buffer)
-                    if (bytesRead < 0) break
-                    output.write(buffer, 0, bytesRead)
-                    downloadedBytes += bytesRead
-                    onProgress(
-                        InstallProgress(
-                            stage = InstallStage.Downloading,
-                            downloadedBytes = downloadedBytes,
-                            totalBytes = totalBytes,
-                        ),
-                    )
+        try {
+            connection.inputStream.buffered().use { input ->
+                DigestOutputStream(FileOutputStream(temporaryFile), digest).use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val bytesRead = input.read(buffer)
+                        if (bytesRead < 0) break
+                        output.write(buffer, 0, bytesRead)
+                        downloadedBytes += bytesRead
+                        onProgress(
+                            InstallProgress(
+                                stage = InstallStage.Downloading,
+                                downloadedBytes = downloadedBytes,
+                                totalBytes = totalBytes,
+                            ),
+                        )
+                    }
                 }
             }
+        } catch (error: CancellationException) {
+            if (temporaryFile.exists() && !temporaryFile.delete()) {
+                temporaryFile.deleteOnExit()
+            }
+            throw error
+        } finally {
+            connection.disconnect()
         }
 
         verifyDownloadedFile(
@@ -105,7 +120,9 @@ class ReleaseInstaller(
         check(temporaryFile.isFile) { "Downloaded APK was not written to disk." }
         temporaryFile.copyTo(cacheFile, overwrite = true)
         check(cacheFile.isFile) { "Failed to store the downloaded APK in cache." }
-        temporaryFile.delete()
+        if (temporaryFile.exists() && !temporaryFile.delete()) {
+            temporaryFile.deleteOnExit()
+        }
         return cacheFile
     }
 
@@ -175,7 +192,7 @@ class ReleaseInstaller(
         val session = installer.openSession(sessionId)
 
         FileInputStream(apkFile).buffered().use { input ->
-            session.openWrite(apkFile.name, 0, apkFile.length()).use { output ->
+            session.openWrite(apkFile.name, 0, -1).use { output ->
                 input.copyTo(output, bufferSize = DEFAULT_BUFFER_SIZE)
                 session.fsync(output)
             }

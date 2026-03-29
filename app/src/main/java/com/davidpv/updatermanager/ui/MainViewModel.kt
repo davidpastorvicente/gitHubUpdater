@@ -10,11 +10,13 @@ import com.davidpv.updatermanager.data.model.ManagedApp
 import com.davidpv.updatermanager.install.InstallResultEvents
 import com.davidpv.updatermanager.install.InstallResultStatus
 import com.davidpv.updatermanager.install.ReleaseInstaller
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class MainUiState(
@@ -31,6 +33,7 @@ class MainViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState(isRefreshing = true))
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val installJobsByPackageName = mutableMapOf<String, Job>()
 
     init {
         viewModelScope.launch {
@@ -86,18 +89,30 @@ class MainViewModel(
         if (_uiState.value.installProgressByPackageName.containsKey(app.packageName)) return
 
         updateInstallProgress(app.packageName, InstallProgress(stage = InstallStage.CheckingCache))
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             runCatching {
                 installer.install(app.packageName, asset) { progress ->
                     updateInstallProgress(app.packageName, progress)
                 }
             }.onFailure { error ->
-                clearInstallProgress(app.packageName)
-                _uiState.update {
-                    it.copy(errorMessage = error.message ?: "Install failed.")
+                if (error is CancellationException) {
+                    clearInstallProgress(app.packageName)
+                } else {
+                    clearInstallProgress(app.packageName)
+                    _uiState.update {
+                        it.copy(errorMessage = error.message ?: "Install failed.")
+                    }
                 }
+            }.also {
+                installJobsByPackageName.remove(app.packageName)
             }
         }
+        installJobsByPackageName[app.packageName] = job
+    }
+
+    fun cancelInstall(packageName: String) {
+        installJobsByPackageName.remove(packageName)?.cancel()
+        clearInstallProgress(packageName)
     }
 
     fun openAppDetails(packageName: String) {

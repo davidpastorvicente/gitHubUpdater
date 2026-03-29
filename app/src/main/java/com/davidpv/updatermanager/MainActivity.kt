@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
                     state = state,
                     onRefresh = viewModel::refresh,
                     onPrimaryAction = viewModel::onPrimaryAction,
+                    onCancelInstall = viewModel::cancelInstall,
                     onOpenAppDetails = viewModel::openAppDetails,
                     onCloseAppDetails = viewModel::closeAppDetails,
                 )
