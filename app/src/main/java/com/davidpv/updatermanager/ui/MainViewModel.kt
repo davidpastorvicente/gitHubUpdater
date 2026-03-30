@@ -244,8 +244,12 @@ class MainViewModel(
     }
 
     fun updateApp(originalPackageName: String, entry: AppCatalogEntry) {
+        val oldEntry = catalogRepository.getEntry(originalPackageName)
         catalogRepository.updateApp(originalPackageName, entry)
-        refresh()
+        val repoChanged = oldEntry == null ||
+            oldEntry.releaseOwner != entry.releaseOwner ||
+            oldEntry.releaseRepo != entry.releaseRepo
+        if (repoChanged) refresh() else refreshLocalStatus()
     }
 
     fun deleteApp(packageName: String) {
@@ -256,7 +260,6 @@ class MainViewModel(
                 selectedPackageName = state.selectedPackageName?.takeIf { it != packageName },
             )
         }
-        refresh()
     }
 
     fun importApps(json: String) {

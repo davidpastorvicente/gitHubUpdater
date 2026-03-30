@@ -15,6 +15,9 @@ class AppCatalogRepository(context: Context) {
 
     fun loadSupportedApps(): List<AppCatalogEntry> = _apps.value
 
+    fun getEntry(packageName: String): AppCatalogEntry? =
+        _apps.value.firstOrNull { it.packageName == packageName }
+
     fun addApp(entry: AppCatalogEntry) {
         val current = _apps.value
         require(current.none { it.packageName == entry.packageName }) {
