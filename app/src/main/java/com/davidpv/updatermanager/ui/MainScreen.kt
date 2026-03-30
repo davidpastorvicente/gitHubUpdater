@@ -778,16 +778,17 @@ private fun AppCard(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false },
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("Open") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                            ?.let { context.startActivity(it) }
-                                    },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Launch, contentDescription = null) },
-                                    enabled = isInstalled,
-                                )
+                                if (isInstalled) {
+                                    DropdownMenuItem(
+                                        text = { Text("Open") },
+                                        onClick = {
+                                            menuExpanded = false
+                                            context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                                ?.let { context.startActivity(it) }
+                                        },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Launch, contentDescription = null) },
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text("Edit") },
                                     onClick = {
@@ -796,26 +797,28 @@ private fun AppCard(
                                     },
                                     leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("History") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onOpenHistory()
-                                    },
-                                    leadingIcon = { Icon(Icons.Rounded.History, contentDescription = null) },
-                                    enabled = hasRemoteRelease,
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Uninstall") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        val intent = Intent(Intent.ACTION_DELETE,
-                                            "package:${app.packageName}".toUri())
-                                        context.startActivity(intent)
-                                    },
-                                    leadingIcon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
-                                    enabled = isInstalled,
-                                )
+                                if (hasRemoteRelease) {
+                                    DropdownMenuItem(
+                                        text = { Text("History") },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onOpenHistory()
+                                        },
+                                        leadingIcon = { Icon(Icons.Rounded.History, contentDescription = null) },
+                                    )
+                                }
+                                if (isInstalled) {
+                                    DropdownMenuItem(
+                                        text = { Text("Uninstall") },
+                                        onClick = {
+                                            menuExpanded = false
+                                            val intent = Intent(Intent.ACTION_DELETE,
+                                                "package:${app.packageName}".toUri())
+                                            context.startActivity(intent)
+                                        },
+                                        leadingIcon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
+                                    )
+                                }
                             }
                         }
                     }
