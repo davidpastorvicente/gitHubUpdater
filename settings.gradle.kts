@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Updater Manager"
+rootProject.name = "GitHub Updater"
 include(":app")

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.davidpv.updatermanager"
+    namespace = "com.davidpv.githubupdater"
     compileSdk = 36
 
     val releaseKeystoreFile = System.getenv("RELEASE_KEYSTORE_FILE")
@@ -18,7 +18,7 @@ android {
         !releaseKeyPassword.isNullOrBlank()
 
     defaultConfig {
-        applicationId = "com.davidpv.updatermanager"
+        applicationId = "com.davidpv.githubupdater"
         minSdk = 29
         targetSdk = 36
 

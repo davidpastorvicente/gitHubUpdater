@@ -1,6 +1,6 @@
-# updaterManager
+# gitHubUpdater
 
-`updaterManager` is a small Android app for tracking and installing upstream APK releases outside of Google Play.
+`gitHubUpdater` is a small Android app for tracking and installing upstream APK releases outside of Google Play.
 
 Features:
 - the latest available app release
