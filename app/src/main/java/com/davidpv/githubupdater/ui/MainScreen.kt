@@ -2,7 +2,6 @@ package com.davidpv.githubupdater.ui
 
 import android.content.Intent
 import android.content.res.Configuration
-import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -64,7 +63,6 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.navigation.NavType
@@ -81,12 +79,9 @@ import com.davidpv.githubupdater.data.model.ManagedApp
 import com.davidpv.githubupdater.data.model.ReleaseAsset
 import com.davidpv.githubupdater.data.model.ReleaseItem
 import com.davidpv.githubupdater.data.model.ThemeMode
-import com.davidpv.githubupdater.ui.theme.LocalStatusPalette
 import com.davidpv.githubupdater.ui.theme.GitHubUpdaterTheme
+import com.davidpv.githubupdater.ui.theme.LocalStatusPalette
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 private const val LIST_ROUTE = "list"
 private const val DETAIL_ROUTE = "detail/{packageName}"
@@ -553,34 +548,6 @@ private fun AppListContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppDetailScreen(
-    app: ManagedApp,
-    onBack: () -> Unit,
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(app.displayName) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            AppDetailContent(app = app)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 private fun SettingsRouteScreen(
     state: MainUiState,
     onBack: () -> Unit,
@@ -616,55 +583,6 @@ private fun SettingsRouteScreen(
             onImportConfig = onImportConfig,
             onExportConfig = onExportConfig,
         )
-    }
-}
-
-@Composable
-private fun AppDetailContent(app: ManagedApp) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text(
-                text = "Version history",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
-        item {
-            Text(
-                text = "Showing the available release history for this app",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        items(app.history, key = { it.id }) { release ->
-            HistoryRow(release = release, isLatest = release.id == app.history.firstOrNull()?.id)
-        }
-    }
-}
-
-@Composable
-private fun ExpandedAppDetailContent(
-    app: ManagedApp,
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = app.displayName,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        AppDetailContent(app = app)
     }
 }
 
@@ -980,66 +898,6 @@ private fun VersionLine(label: String, value: String) {
 }
 
 @Composable
-private fun HistoryRow(
-    release: ReleaseItem,
-    isLatest: Boolean,
-) {
-    val context = LocalContext.current
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        tonalElevation = 1.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = release.versionName,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                    fontWeight = FontWeight.SemiBold,
-                )
-                if (isLatest) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Text(
-                            text = "Latest",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                }
-            }
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = Formatter.formatFileSize(context, release.asset.sizeBytes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = DATE_FORMATTER.format(release.publishedAt.atZone(ZoneId.systemDefault())),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun ErrorCard(message: String) {
     val palette = LocalStatusPalette.current
     Card(
@@ -1062,7 +920,6 @@ private fun statusLabel(state: AvailabilityState): String = when (state) {
     is AvailabilityState.InstalledVersionUnknown -> "Updated"
 }
 
-private val DATE_FORMATTER = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
