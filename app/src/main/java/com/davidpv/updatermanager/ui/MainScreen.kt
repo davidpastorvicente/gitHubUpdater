@@ -1,5 +1,6 @@
 package com.davidpv.updatermanager.ui
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
@@ -18,16 +19,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Launch
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
@@ -59,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -208,6 +215,9 @@ private fun CompactMainScreen(
                     onOpenAppDetails(packageName)
                     navController.navigate("$DETAIL_ROUTE_PREFIX/$packageName")
                 },
+                onEditApp = { packageName ->
+                    navController.navigate("$EDIT_APP_ROUTE_PREFIX/$packageName")
+                },
                 onAddApp = { navController.navigate(ADD_APP_ROUTE) },
             )
         }
@@ -220,16 +230,9 @@ private fun CompactMainScreen(
             if (app != null) {
                 AppDetailScreen(
                     app = app,
-                    onOpenSettings = {
-                        onOpenSettings()
-                        navController.navigate(SETTINGS_ROUTE)
-                    },
                     onBack = {
                         onCloseAppDetails()
                         navController.popBackStack()
-                    },
-                    onEditApp = {
-                        navController.navigate("$EDIT_APP_ROUTE_PREFIX/${app.packageName}")
                     },
                 )
             }
@@ -355,6 +358,10 @@ private fun ExpandedMainScreen(
                         editingPackageName = null
                         onOpenAppDetails(packageName)
                     },
+                    onEditApp = { packageName ->
+                        isAddingApp = false
+                        editingPackageName = packageName
+                    },
                 )
             }
             Box(modifier = Modifier.weight(0.58f)) {
@@ -405,7 +412,6 @@ private fun ExpandedMainScreen(
                     selectedApp != null -> {
                         ExpandedAppDetailContent(
                             app = selectedApp,
-                            onEditApp = { editingPackageName = selectedApp.packageName },
                         )
                     }
                     else -> {
@@ -426,6 +432,7 @@ private fun AppListScreen(
     onCancelInstall: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
+    onEditApp: (String) -> Unit,
     onAddApp: () -> Unit,
 ) {
     Scaffold(
@@ -456,6 +463,7 @@ private fun AppListScreen(
                 onPrimaryAction = onPrimaryAction,
                 onCancelInstall = onCancelInstall,
                 onOpenAppDetails = onOpenAppDetails,
+                onEditApp = onEditApp,
             )
         }
     }
@@ -468,6 +476,7 @@ private fun AppListContent(
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
+    onEditApp: (String) -> Unit,
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
     val groupedApps = state.apps.groupBy { app -> statusLabel(app.availabilityState) }
@@ -514,7 +523,8 @@ private fun AppListContent(
                         installProgress = state.installProgressByPackageName[app.packageName],
                         onPrimaryAction = { onPrimaryAction(app) },
                         onCancelInstall = { onCancelInstall(app.packageName) },
-                        onOpenDetails = { onOpenAppDetails(app.packageName) },
+                        onOpenHistory = { onOpenAppDetails(app.packageName) },
+                        onEditConfig = { onEditApp(app.packageName) },
                     )
                 }
             }
@@ -526,9 +536,7 @@ private fun AppListContent(
 @Composable
 private fun AppDetailScreen(
     app: ManagedApp,
-    onOpenSettings: () -> Unit,
     onBack: () -> Unit,
-    onEditApp: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -537,14 +545,6 @@ private fun AppDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onEditApp) {
-                        Icon(Icons.Rounded.Edit, contentDescription = "Edit app configuration")
-                    }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "Settings")
                     }
                 },
             )
@@ -630,7 +630,6 @@ private fun AppDetailContent(app: ManagedApp) {
 @Composable
 private fun ExpandedAppDetailContent(
     app: ManagedApp,
-    onEditApp: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -645,9 +644,6 @@ private fun ExpandedAppDetailContent(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
-            IconButton(onClick = onEditApp) {
-                Icon(Icons.Rounded.Edit, contentDescription = "Edit app configuration")
-            }
         }
         AppDetailContent(app = app)
     }
@@ -679,11 +675,14 @@ private fun AppCard(
     installProgress: InstallProgress?,
     onPrimaryAction: () -> Unit,
     onCancelInstall: () -> Unit,
-    onOpenDetails: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onEditConfig: () -> Unit,
 ) {
     val isBusy = installProgress != null
     val canCancel = installProgress?.let(::progressCanBeCancelled) == true
-    val canOpenDetails = app.availabilityState !is AvailabilityState.NoRemoteRelease
+    val hasRemoteRelease = app.availabilityState !is AvailabilityState.NoRemoteRelease
+    val isInstalled = app.installedVersionName != null
+    val context = LocalContext.current
     val showLatestVersion = app.latestVersionName != null && app.availabilityState !is AvailabilityState.Current
     val showInstalledVersion = app.installedVersionName != null
     val actionIcon = when (app.availabilityState) {
@@ -742,7 +741,6 @@ private fun AppCard(
                     }
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         FilledIconActionButton(
@@ -768,14 +766,57 @@ private fun AppCard(
                             }
                         }
 
-                        FilledIconActionButton(
-                            onClick = onOpenDetails,
-                            enabled = canOpenDetails,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.History,
-                                contentDescription = "Open version history",
-                            )
+                        Box {
+                            var menuExpanded by remember { mutableStateOf(false) }
+                            IconButton(
+                                onClick = { menuExpanded = true },
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = "More options")
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Open") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                            ?.let { context.startActivity(it) }
+                                    },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Launch, contentDescription = null) },
+                                    enabled = isInstalled,
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Edit") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onEditConfig()
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("History") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onOpenHistory()
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.History, contentDescription = null) },
+                                    enabled = hasRemoteRelease,
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Uninstall") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        val intent = Intent(Intent.ACTION_DELETE,
+                                            "package:${app.packageName}".toUri())
+                                        context.startActivity(intent)
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
+                                    enabled = isInstalled,
+                                )
+                            }
                         }
                     }
                 }
@@ -1005,7 +1046,8 @@ private fun AppCardPreview() {
             installProgress = null,
             onPrimaryAction = {},
             onCancelInstall = {},
-            onOpenDetails = {},
+            onOpenHistory = {},
+            onEditConfig = {},
         )
     }
 }

@@ -23,6 +23,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davidpv.updatermanager.data.model.InstallProgress
@@ -56,6 +58,9 @@ class MainActivity : ComponentActivity() {
                 ),
             )
             val state by viewModel.uiState.collectAsStateWithLifecycle()
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshLocalStatus()
+            }
             val latestApps by rememberUpdatedState(state.apps)
             val notificationPermissionLauncher = rememberLauncherForActivityResult(RequestPermission()) { }
             val pickDownloadFolderLauncher = rememberLauncherForActivityResult(OpenDocumentTree()) { uri ->
@@ -120,6 +125,7 @@ class MainActivity : ComponentActivity() {
                         ?: "App"
                     when (event.status) {
                         InstallResultStatus.Success -> {
+                            viewModel.refreshLocalStatus()
                             Toast.makeText(
                                 this@MainActivity,
                                 if (event.cleanupFailed) {
@@ -140,11 +146,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         InstallResultStatus.Failed -> {
-                            Toast.makeText(
-                                this@MainActivity,
-                                event.failureMessage ?: "$displayName installation failed",
-                                Toast.LENGTH_LONG,
-                            ).show()
+                            // Error card is already shown in the UI
                         }
                     }
                 }

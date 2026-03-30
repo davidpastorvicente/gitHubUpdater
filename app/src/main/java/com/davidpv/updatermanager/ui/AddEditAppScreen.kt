@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -112,8 +114,29 @@ fun AddEditAppScreen(
                 },
                 actions = {
                     if (onDelete != null) {
-                        IconButton(onClick = onDelete) {
+                        var showDeleteDialog by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showDeleteDialog = true }) {
                             Icon(Icons.Rounded.Delete, contentDescription = "Delete app")
+                        }
+                        if (showDeleteDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteDialog = false },
+                                title = { Text("Delete app") },
+                                text = { Text("Are you sure you want to remove \"${state.displayName}\" from your catalog?") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        showDeleteDialog = false
+                                        onDelete()
+                                    }) {
+                                        Text("Delete")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDeleteDialog = false }) {
+                                        Text("Cancel")
+                                    }
+                                },
+                            )
                         }
                     }
                 },
@@ -192,7 +215,7 @@ fun AddEditAppScreen(
                     onValueChange = { state = state.copy(apkRegex = it); testResult = null; saveError = null },
                     label = { Text("APK regex") },
                     placeholder = { Text("e.g. ^twitter-piko-v.*") },
-                    supportingText = { Text("Matches the APK filename without .apk suffix. Leave blank to match any APK.") },
+                    supportingText = { Text("Matches the APK filename without .apk suffix.\nLeave blank to match any APK.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -203,7 +226,7 @@ fun AddEditAppScreen(
                     onValueChange = { state = state.copy(versionRegex = it); testResult = null; saveError = null },
                     label = { Text("Version regex") },
                     placeholder = { Text("e.g. -V(.+)-release") },
-                    supportingText = { Text("Extracts version from APK filename (capture group 1). Leave blank to use the release tag.") },
+                    supportingText = { Text("Extracts version from APK filename (capture group 1).\nLeave blank to use the release tag.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -321,11 +344,7 @@ private suspend fun runTestConfig(
         for (release in releases) {
             if (release.draft || release.prerelease) continue
             for (asset in release.assets) {
-                val matches = if (apkRegexPattern != null) {
-                    apkRegexPattern.matches(asset.name)
-                } else {
-                    asset.name.endsWith(".apk")
-                }
+                val matches = apkRegexPattern?.containsMatchIn(asset.name) ?: asset.name.endsWith(".apk")
                 if (!matches) continue
 
                 val versionName = if (state.versionRegex.isNotBlank()) {

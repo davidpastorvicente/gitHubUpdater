@@ -108,7 +108,7 @@ class AppRepository(
             ?.removeSuffix("$")
             ?.plus("\\.apk$")
             ?: return asset.name.endsWith(".apk")
-        return Regex(apkRegex).matches(asset.name)
+        return Regex(apkRegex).containsMatchIn(asset.name)
     }
 
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {
