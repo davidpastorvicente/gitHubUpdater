@@ -106,7 +106,7 @@ fun AddEditAppScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isEditing) "Edit App" else "New App") },
+                title = { Text(if (isEditing) "Edit app" else "New app") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
