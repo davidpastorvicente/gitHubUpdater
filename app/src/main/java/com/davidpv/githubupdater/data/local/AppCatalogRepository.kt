@@ -11,9 +11,11 @@ class AppCatalogRepository(context: Context) {
     private val preferences = context.applicationContext
         .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
+    private val prettyJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val _apps = MutableStateFlow(loadFromDisk())
 
-    fun loadSupportedApps(): List<AppCatalogEntry> = _apps.value
+    fun loadSupportedApps(): List<AppCatalogEntry> =
+        _apps.value.sortedBy { it.displayName.lowercase() }
 
     fun getEntry(packageName: String): AppCatalogEntry? =
         _apps.value.firstOrNull { it.packageName == packageName }
@@ -48,8 +50,10 @@ class AppCatalogRepository(context: Context) {
         persist(entries)
     }
 
-    fun exportAppsJson(): String =
-        json.encodeToString(serializer = AppCatalogEntry.serializer().listSerializer(), _apps.value)
+    fun exportAppsJson(): String {
+        val sorted = _apps.value.sortedBy { it.displayName.lowercase() }
+        return prettyJson.encodeToString(serializer = AppCatalogEntry.serializer().listSerializer(), sorted)
+    }
 
     private fun persist(apps: List<AppCatalogEntry>) {
         val raw = json.encodeToString(serializer = AppCatalogEntry.serializer().listSerializer(), apps)

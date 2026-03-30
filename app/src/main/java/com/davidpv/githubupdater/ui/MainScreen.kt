@@ -505,6 +505,24 @@ private fun AppListContent(
                 item { ErrorCard(message = message) }
             }
 
+            if (state.apps.isEmpty() && !state.isRefreshing) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillParentMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "No apps configured yet\nTap + to add one",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                }
+            }
+
             orderedSectionTitles.forEach { sectionTitle ->
                 item(key = "section-$sectionTitle") {
                     Text(
@@ -615,7 +633,7 @@ private fun AppDetailContent(app: ManagedApp) {
         }
         item {
             Text(
-                text = "Showing the available release history for this app.",
+                text = "Showing the available release history for this app",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
