@@ -6,19 +6,24 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.davidpv.updatermanager.data.model.AppSettings
 import com.davidpv.updatermanager.data.model.ThemeMode
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsContent(
     settings: AppSettings,
@@ -42,7 +48,7 @@ fun SettingsContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item {
             Text(
@@ -51,85 +57,65 @@ fun SettingsContent(
                 fontWeight = FontWeight.SemiBold,
             )
         }
+
+        // Appearance
         item {
-            SettingsSectionCard {
-                ThemeMode.entries.forEach { themeMode ->
-                    SettingsRadioRow(
-                        title = themeMode.label,
-                        selected = settings.themeMode == themeMode,
-                        onClick = { onSetThemeMode(themeMode) },
-                    )
-                }
-                HorizontalDivider()
+            SettingsSection(title = "Appearance") {
+                ThemeDropdown(
+                    selected = settings.themeMode,
+                    onSelected = onSetThemeMode,
+                )
                 SettingsSwitchRow(
-                    title = "Use dynamic colors",
+                    title = "Dynamic colors",
                     subtitle = "Follow wallpaper-based Material colors",
                     checked = settings.useDynamicColor,
                     onCheckedChange = onSetDynamicColor,
                 )
             }
         }
+
+        // Downloads
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Downloads",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+            SettingsSection(title = "Downloads") {
+                SettingsSwitchRow(
+                    title = "Delete APK after install",
+                    subtitle = "Remove downloaded APK files automatically",
+                    checked = settings.deleteApkAfterInstall,
+                    onCheckedChange = onSetDeleteApkAfterInstall,
                 )
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "APK cleanup",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    SettingsSwitchRow(
-                        title = "Delete APK after install",
-                        subtitle = "Enabled by default. Turn this off to keep downloaded APK files.",
-                        checked = settings.deleteApkAfterInstall,
-                        onCheckedChange = onSetDeleteApkAfterInstall,
-                    )
-                    HorizontalDivider()
-                    Text(
-                        text = "Current folder",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = "Download folder",
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
                         text = downloadLocationSummary,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Button(onClick = onPickDownloadFolder) {
-                            Text("Choose folder")
-                        }
-                        if (!settings.usesDefaultDownloadDirectory) {
-                            OutlinedButton(onClick = onUseDefaultDownloadLocation) {
-                                Text("Use default")
-                            }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = onPickDownloadFolder) {
+                        Text("Choose folder")
+                    }
+                    if (!settings.usesDefaultDownloadDirectory) {
+                        OutlinedButton(onClick = onUseDefaultDownloadLocation) {
+                            Text("Use default")
                         }
                     }
                 }
             }
         }
+
+        // App Configuration
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsSection(title = "App configuration") {
                 Text(
-                    text = "App Configuration",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Import or export your app list as a JSON file.",
+                    text = "Import or export your app list as a JSON file",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = onImportConfig) {
                         Text("Import")
                     }
@@ -143,42 +129,55 @@ fun SettingsContent(
 }
 
 @Composable
-private fun SettingsSectionCard(
+private fun SettingsSection(
+    title: String,
     content: @Composable () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Theme",
+            text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        ) {
-            content()
-        }
+        content()
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsRadioRow(
-    title: String,
-    selected: Boolean,
-    onClick: () -> Unit,
+private fun ThemeDropdown(
+    selected: ThemeMode,
+    onSelected: (ThemeMode) -> Unit,
 ) {
-    Surface(onClick = onClick) {
-        Row(
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = selected.label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Theme") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .widthIn(max = 150.dp)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
         ) {
-            RadioButton(selected = selected, onClick = onClick)
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            ThemeMode.entries.forEach { mode ->
+                DropdownMenuItem(
+                    text = { Text(mode.label) },
+                    onClick = {
+                        onSelected(mode)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }
@@ -190,33 +189,29 @@ private fun SettingsSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Surface(onClick = { onCheckedChange(!checked) }) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }
 
@@ -226,3 +221,4 @@ private val ThemeMode.label: String
         ThemeMode.Light -> "Light"
         ThemeMode.Dark -> "Dark"
     }
+
