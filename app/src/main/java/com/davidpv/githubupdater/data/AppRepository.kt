@@ -135,15 +135,16 @@ class AppRepository(
         assetName: String,
         app: AppCatalogEntry,
     ): String {
+        val cleanTag = releaseTagName.removePrefix("v").removePrefix("V")
         val versionRegex = app.versionRegex
             ?.removeSuffix("$")?.plus("\\.apk$")
-            ?: return releaseTagName
+            ?: return cleanTag
         val regex = Regex(versionRegex)
         return regex.find(assetName)
             ?.groupValues
             ?.getOrNull(1)
             ?.takeIf { it.isNotBlank() }
-            ?: releaseTagName
+            ?: cleanTag
     }
 
     private fun compareVersions(installedVersion: String, latestVersion: String): Int? {
