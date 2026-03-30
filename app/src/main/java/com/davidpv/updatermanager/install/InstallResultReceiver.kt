@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
+import androidx.documentfile.provider.DocumentFile
 
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -95,11 +97,30 @@ class InstallResultReceiver : BroadcastReceiver() {
         val uri = apkUri?.let(Uri::parse) ?: return true
         return try {
             context.contentResolver.delete(uri, null, null)
+            removeEmptyParentFolder(context, apkUri)
             false
         } catch (_: SecurityException) {
             true
         } catch (_: IllegalArgumentException) {
             true
+        }
+    }
+
+    private fun removeEmptyParentFolder(context: Context, apkUriString: String?) {
+        try {
+            val apkUri = apkUriString?.let(Uri::parse) ?: return
+            val docId = DocumentsContract.getDocumentId(apkUri)
+            val parentDocId = docId.substringBeforeLast("/", "")
+            if (parentDocId.isEmpty()) return
+            val treeUri = DocumentsContract.buildTreeDocumentUri(
+                apkUri.authority, parentDocId,
+            )
+            val parentDoc = DocumentFile.fromTreeUri(context, treeUri) ?: return
+            if (parentDoc.listFiles().isEmpty()) {
+                parentDoc.delete()
+            }
+        } catch (_: Exception) {
+            // Best effort
         }
     }
 }
