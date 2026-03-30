@@ -90,32 +90,21 @@ class MainViewModel(
             }
                 .onSuccess { apps ->
                     _uiState.update { state ->
-                        val appsByPackageName = apps.associateBy(ManagedApp::packageName)
-                        val retainedProgress = state.installProgressByPackageName.filter { (packageName, progress) ->
-                            val app = appsByPackageName[packageName]
-                            when {
-                                app == null -> false
-                                progress.stage != InstallStage.AwaitingConfirmation -> true
-                                app.installedVersionName == null -> true
-                                else -> false
-                            }
-                        }
-                        state.copy(
-                            apps = apps,
-                            selectedPackageName = state.selectedPackageName?.takeIf { selectedPackageName ->
-                                apps.any { it.packageName == selectedPackageName }
-                            },
-                            isRefreshing = false,
-                            installProgressByPackageName = retainedProgress,
-                        )
+                        applyAppsUpdate(state, apps)
                     }
                 }
                 .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isRefreshing = false,
-                            errorMessage = error.message ?: "Failed to refresh apps.",
-                        )
+                    _uiState.update { state ->
+                        if (error is AppRepository.PartialLoadException) {
+                            applyAppsUpdate(state, error.apps).copy(
+                                errorMessage = error.message,
+                            )
+                        } else {
+                            state.copy(
+                                isRefreshing = false,
+                                errorMessage = error.message ?: "Failed to refresh apps.",
+                            )
+                        }
                     }
                 }
         }
@@ -136,24 +125,7 @@ class MainViewModel(
                 )
             }.onSuccess { apps ->
                 _uiState.update { state ->
-                    val appsByPackageName = apps.associateBy(ManagedApp::packageName)
-                    val retainedProgress = state.installProgressByPackageName.filter { (packageName, progress) ->
-                        val app = appsByPackageName[packageName]
-                        when {
-                            app == null -> false
-                            progress.stage != InstallStage.AwaitingConfirmation -> true
-                            app.installedVersionName == null -> true
-                            else -> false
-                        }
-                    }
-                    state.copy(
-                        apps = apps,
-                        selectedPackageName = state.selectedPackageName?.takeIf { selectedPackageName ->
-                            apps.any { it.packageName == selectedPackageName }
-                        },
-                        isRefreshing = false,
-                        installProgressByPackageName = retainedProgress,
-                    )
+                    applyAppsUpdate(state, apps)
                 }
             }.onFailure { error ->
                 _uiState.update {
@@ -164,6 +136,27 @@ class MainViewModel(
                 }
             }
         }
+    }
+
+    private fun applyAppsUpdate(state: MainUiState, apps: List<ManagedApp>): MainUiState {
+        val appsByPackageName = apps.associateBy(ManagedApp::packageName)
+        val retainedProgress = state.installProgressByPackageName.filter { (packageName, progress) ->
+            val app = appsByPackageName[packageName]
+            when {
+                app == null -> false
+                progress.stage != InstallStage.AwaitingConfirmation -> true
+                app.installedVersionName == null -> true
+                else -> false
+            }
+        }
+        return state.copy(
+            apps = apps,
+            selectedPackageName = state.selectedPackageName?.takeIf { selectedPackageName ->
+                apps.any { it.packageName == selectedPackageName }
+            },
+            isRefreshing = false,
+            installProgressByPackageName = retainedProgress,
+        )
     }
 
     fun onPrimaryAction(app: ManagedApp) {

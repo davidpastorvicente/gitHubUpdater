@@ -23,22 +23,28 @@ class AppRepository(
         forceRemoteRefresh: Boolean = false,
         useCachedRemoteDataOnly: Boolean = false,
     ): List<ManagedApp> {
-        return appCatalogRepository.loadSupportedApps().map { supportedApp ->
+        val errors = mutableListOf<String>()
+        val apps = appCatalogRepository.loadSupportedApps().map { supportedApp ->
             val releases = if (useCachedRemoteDataOnly) {
                 cachedReleasesByPackageName[supportedApp.packageName].orEmpty()
             } else {
-                releasesService.fetchReleases(
-                    owner = supportedApp.releaseOwner,
-                    repo = supportedApp.releaseRepo,
-                    perPage = RELEASES_PER_PAGE,
-                    forceRefresh = forceRemoteRefresh,
-                )
-                    .asSequence()
-                    .filterNot { it.draft || it.prerelease }
-                    .mapNotNull { toReleaseItem(release = it, app = supportedApp) }
-                    .sortedByDescending(ReleaseItem::publishedAt)
-                    .toList()
-                    .also { cachedReleasesByPackageName[supportedApp.packageName] = it }
+                try {
+                    releasesService.fetchReleases(
+                        owner = supportedApp.releaseOwner,
+                        repo = supportedApp.releaseRepo,
+                        perPage = RELEASES_PER_PAGE,
+                        forceRefresh = forceRemoteRefresh,
+                    )
+                        .asSequence()
+                        .filterNot { it.draft || it.prerelease }
+                        .mapNotNull { toReleaseItem(release = it, app = supportedApp) }
+                        .sortedByDescending(ReleaseItem::publishedAt)
+                        .toList()
+                        .also { cachedReleasesByPackageName[supportedApp.packageName] = it }
+                } catch (e: Exception) {
+                    errors += "${supportedApp.displayName}: ${e.message}"
+                    cachedReleasesByPackageName[supportedApp.packageName].orEmpty()
+                }
             }
 
             val latestRelease = releases.firstOrNull()
@@ -65,7 +71,16 @@ class AppRepository(
                 history = releases,
             )
         }
+        if (errors.isNotEmpty()) {
+            throw PartialLoadException(apps = apps, errors = errors)
+        }
+        return apps
     }
+
+    class PartialLoadException(
+        val apps: List<ManagedApp>,
+        val errors: List<String>,
+    ) : Exception(errors.joinToString("\n"))
 
     private fun toReleaseItem(
         release: GitHubReleaseResponse,
