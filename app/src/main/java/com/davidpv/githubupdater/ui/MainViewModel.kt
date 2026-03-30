@@ -10,8 +10,8 @@ import com.davidpv.githubupdater.data.local.AppSettingsRepository
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.AppSettings
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
-import com.davidpv.githubupdater.data.model.InstallStage
 import com.davidpv.githubupdater.data.model.InstallProgress
+import com.davidpv.githubupdater.data.model.InstallStage
 import com.davidpv.githubupdater.data.model.ManagedApp
 import com.davidpv.githubupdater.data.model.ThemeMode
 import com.davidpv.githubupdater.data.remote.GitHubReleasesService
@@ -19,12 +19,12 @@ import com.davidpv.githubupdater.install.InstallResultEvents
 import com.davidpv.githubupdater.install.InstallResultStatus
 import com.davidpv.githubupdater.install.ReleaseInstaller
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class MainUiState(

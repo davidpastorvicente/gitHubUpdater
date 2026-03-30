@@ -1,10 +1,10 @@
 package com.davidpv.githubupdater.data.local
 
 import android.content.Context
+import androidx.core.content.edit
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
-import androidx.core.content.edit
 
 class AppCatalogRepository(context: Context) {
 
