@@ -1,29 +1,36 @@
-# macOS
+# ─── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store
 
-# Android Studio / IntelliJ
+# ─── Android Studio / IntelliJ ────────────────────────────────────────────────
 .idea/
 *.iml
+*.iws
+*.ipr
+out/
 
-# Gradle / Kotlin
+# ─── Gradle / Kotlin ──────────────────────────────────────────────────────────
 .gradle/
 .kotlin/
 build/
 **/build/
 
-# Local machine configuration
+# ─── Local machine configuration ──────────────────────────────────────────────
 local.properties
 
-# Signing / secrets
+# ─── Signing / secrets ────────────────────────────────────────────────────────
 *.jks
 *.keystore
 keystore.properties
 
-# Android generated outputs
+# ─── Android build outputs ────────────────────────────────────────────────────
+*.apk
+*.aab
+*.ap_
+*.dex
 captures/
 .externalNativeBuild/
 .cxx/
 
-# Logs / reports
+# ─── Logs / reports ───────────────────────────────────────────────────────────
 *.log
 coverage/
