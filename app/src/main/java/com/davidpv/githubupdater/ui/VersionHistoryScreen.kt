@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +44,7 @@ import java.time.format.FormatStyle
 @Composable
 internal fun AppDetailScreen(
     app: ManagedApp,
+    isLoadingHistory: Boolean,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -68,7 +70,7 @@ internal fun AppDetailScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            AppDetailContent(app = app)
+            AppDetailContent(app = app, isLoadingHistory = isLoadingHistory)
         }
     }
 }
@@ -76,6 +78,7 @@ internal fun AppDetailScreen(
 @Composable
 internal fun ExpandedAppDetailContent(
     app: ManagedApp,
+    isLoadingHistory: Boolean,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -91,12 +94,12 @@ internal fun ExpandedAppDetailContent(
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        AppDetailContent(app = app)
+        AppDetailContent(app = app, isLoadingHistory = isLoadingHistory)
     }
 }
 
 @Composable
-internal fun AppDetailContent(app: ManagedApp) {
+internal fun AppDetailContent(app: ManagedApp, isLoadingHistory: Boolean) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -116,8 +119,24 @@ internal fun AppDetailContent(app: ManagedApp) {
             )
         }
 
-        items(app.history, key = { it.id }) { release ->
-            HistoryRow(release = release, isLatest = release.id == app.history.firstOrNull()?.id)
+        if (isLoadingHistory && app.history.isEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = "Loading version history…",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        } else {
+            items(app.history, key = { it.id }) { release ->
+                HistoryRow(release = release, isLatest = release.id == app.history.firstOrNull()?.id)
+            }
         }
     }
 }

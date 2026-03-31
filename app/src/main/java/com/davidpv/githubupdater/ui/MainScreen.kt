@@ -113,6 +113,7 @@ fun MainScreen(
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
+    onLoadHistory: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
     onAddApp: (AppCatalogEntry) -> Unit,
     onUpdateApp: (String, AppCatalogEntry) -> Unit,
@@ -141,6 +142,7 @@ fun MainScreen(
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
+            onLoadHistory = onLoadHistory,
             onAddApp = onAddApp,
             onUpdateApp = onUpdateApp,
             onDeleteApp = onDeleteApp,
@@ -165,6 +167,7 @@ fun MainScreen(
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
+            onLoadHistory = onLoadHistory,
             onCloseAppDetails = onCloseAppDetails,
             onAddApp = onAddApp,
             onUpdateApp = onUpdateApp,
@@ -194,6 +197,7 @@ private fun CompactMainScreen(
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
+    onLoadHistory: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
     onAddApp: (AppCatalogEntry) -> Unit,
     onUpdateApp: (String, AppCatalogEntry) -> Unit,
@@ -222,6 +226,7 @@ private fun CompactMainScreen(
                 },
                 onOpenAppDetails = { packageName ->
                     onOpenAppDetails(packageName)
+                    onLoadHistory(packageName)
                     navController.navigate("$DETAIL_ROUTE_PREFIX/$packageName")
                 },
                 onEditApp = { packageName ->
@@ -239,6 +244,7 @@ private fun CompactMainScreen(
             if (app != null) {
                 AppDetailScreen(
                     app = app,
+                    isLoadingHistory = state.historyLoadingPackageName == app.packageName,
                     onBack = {
                         onCloseAppDetails()
                         navController.popBackStack()
@@ -314,6 +320,7 @@ private fun ExpandedMainScreen(
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
+    onLoadHistory: (String) -> Unit,
     onAddApp: (AppCatalogEntry) -> Unit,
     onUpdateApp: (String, AppCatalogEntry) -> Unit,
     onDeleteApp: (String) -> Unit,
@@ -372,11 +379,12 @@ private fun ExpandedMainScreen(
                     onPrimaryAction = onPrimaryAction,
                     onCancelInstall = onCancelInstall,
                     onRequestUninstall = onRequestUninstall,
-                    onOpenAppDetails = { packageName ->
-                        isAddingApp = false
-                        editingPackageName = null
-                        onOpenAppDetails(packageName)
-                    },
+                     onOpenAppDetails = { packageName ->
+                         isAddingApp = false
+                         editingPackageName = null
+                         onOpenAppDetails(packageName)
+                         onLoadHistory(packageName)
+                     },
                     onEditApp = { packageName ->
                         isAddingApp = false
                         editingPackageName = packageName
@@ -432,6 +440,7 @@ private fun ExpandedMainScreen(
                     selectedApp != null -> {
                         ExpandedAppDetailContent(
                             app = selectedApp,
+                            isLoadingHistory = state.historyLoadingPackageName == selectedApp.packageName,
                         )
                     }
                     else -> {
@@ -1002,6 +1011,7 @@ private fun ExpandedScreenPreview() {
             onPickDownloadFolder = {},
             onUseDefaultDownloadLocation = {},
             onOpenAppDetails = {},
+            onLoadHistory = {},
             onAddApp = {},
             onUpdateApp = { _, _ -> },
             onDeleteApp = {},

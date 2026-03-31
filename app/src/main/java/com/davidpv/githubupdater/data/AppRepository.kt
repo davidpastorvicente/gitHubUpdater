@@ -34,7 +34,7 @@ class AppRepository(
                     releasesService.fetchReleases(
                         owner = supportedApp.releaseOwner,
                         repo = supportedApp.releaseRepo,
-                        perPage = RELEASES_PER_PAGE,
+                        perPage = LATEST_RELEASES_PER_PAGE,
                         forceRefresh = forceRemoteRefresh,
                     ).also { releaseCacheRepository.save(supportedApp.packageName, it) }
                         .let { toReleaseItems(releases = it, app = supportedApp) }
@@ -73,6 +73,34 @@ class AppRepository(
             throw PartialLoadException(apps = apps, errors = errors)
         }
         return apps
+    }
+
+    suspend fun loadHistory(
+        packageName: String,
+        forceRemoteRefresh: Boolean = false,
+    ): List<ReleaseItem> {
+        val app = appCatalogRepository.getEntry(packageName)
+            ?: error("App with package name '$packageName' not found.")
+        val releases = if (forceRemoteRefresh) {
+            releasesService.fetchReleases(
+                owner = app.releaseOwner,
+                repo = app.releaseRepo,
+                perPage = HISTORY_RELEASES_PER_PAGE,
+                forceRefresh = true,
+            ).also { releaseCacheRepository.save(packageName, it) }
+        } else {
+            val cached = releaseCacheRepository.load(packageName)
+            cached.ifEmpty {
+                releasesService.fetchReleases(
+                    owner = app.releaseOwner,
+                    repo = app.releaseRepo,
+                    perPage = HISTORY_RELEASES_PER_PAGE,
+                    forceRefresh = false,
+                ).also { releaseCacheRepository.save(packageName, it) }
+            }
+        }
+        return toReleaseItems(releases = releases, app = app)
+            .also { cachedReleasesByPackageName[packageName] = it }
     }
 
     class PartialLoadException(
@@ -177,7 +205,8 @@ class AppRepository(
     }
 
     private companion object {
-        const val RELEASES_PER_PAGE = 10
+        const val LATEST_RELEASES_PER_PAGE = 1
+        const val HISTORY_RELEASES_PER_PAGE = 10
         val versionRegex = Regex("\\d+")
 
         fun deduplicateErrors(errors: List<String>): String {

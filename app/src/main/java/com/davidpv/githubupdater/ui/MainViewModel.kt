@@ -38,6 +38,7 @@ data class MainUiState(
     val installProgressByPackageName: Map<String, InstallProgress> = emptyMap(),
     val errorMessage: String? = null,
     val pendingActionsByPackageName: Map<String, AppAction> = emptyMap(),
+    val historyLoadingPackageName: String? = null,
 )
 
 class MainViewModel(
@@ -210,6 +211,7 @@ class MainViewModel(
                 isSettingsOpen = false,
             )
         }
+        loadHistory(packageName)
     }
 
     fun closeAppDetails() {
@@ -290,6 +292,31 @@ class MainViewModel(
 
     suspend fun testFetchReleases(owner: String, repo: String): List<GitHubReleaseResponse> =
         releasesService.fetchReleases(owner = owner, repo = repo, perPage = 10, forceRefresh = true)
+
+    fun loadHistory(packageName: String, forceRemoteRefresh: Boolean = false) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(historyLoadingPackageName = packageName) }
+            runCatching {
+                repository.loadHistory(packageName = packageName, forceRemoteRefresh = forceRemoteRefresh)
+            }.onSuccess { history ->
+                _uiState.update { state ->
+                    state.copy(
+                        apps = state.apps.map { app ->
+                            if (app.packageName == packageName) app.copy(history = history) else app
+                        },
+                        historyLoadingPackageName = state.historyLoadingPackageName.takeIf { it != packageName },
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        historyLoadingPackageName = it.historyLoadingPackageName.takeIf { current -> current != packageName },
+                        errorMessage = error.message ?: "Failed to load version history.",
+                    )
+                }
+            }
+        }
+    }
 
     private fun updateInstallProgress(packageName: String, progress: InstallProgress) {
         _uiState.update { state ->

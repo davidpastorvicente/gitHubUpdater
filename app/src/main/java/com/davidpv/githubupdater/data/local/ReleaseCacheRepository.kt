@@ -25,7 +25,9 @@ class ReleaseCacheRepository(context: Context) {
 
     fun save(packageName: String, releases: List<GitHubReleaseResponse>) {
         val current = loadAll().toMutableMap()
-        current[packageName] = releases
+        current[packageName] = (current[packageName].orEmpty() + releases)
+            .distinctBy(GitHubReleaseResponse::id)
+            .sortedByDescending(GitHubReleaseResponse::publishedAt)
         preferences.edit {
             putString(
                 KEY_RELEASES_BY_PACKAGE,

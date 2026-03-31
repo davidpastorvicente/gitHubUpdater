@@ -243,6 +243,7 @@ class MainActivity : ComponentActivity() {
                     onPickDownloadFolder = { pickDownloadFolderLauncher.launch(null) },
                     onUseDefaultDownloadLocation = viewModel::useDefaultDownloadLocation,
                     onOpenAppDetails = viewModel::openAppDetails,
+                    onLoadHistory = viewModel::loadHistory,
                     onCloseAppDetails = viewModel::closeAppDetails,
                     onAddApp = viewModel::addApp,
                     onUpdateApp = viewModel::updateApp,
