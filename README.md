@@ -1,6 +1,8 @@
-# gitHubUpdater
+[![Release APK](https://github.com/davidpastorvicente/gitHubUpdater/actions/workflows/release-apk.yml/badge.svg)](https://github.com/davidpastorvicente/gitHubUpdater/actions/workflows/release-apk.yml)
 
-`gitHubUpdater` is a small Android app for tracking and installing upstream APK releases outside of Google Play.
+# GitHub Updater
+
+`GitHub Updater` is a small Android app for tracking and installing upstream APK releases outside of Google Play.
 
 Features:
 - the latest available app release
