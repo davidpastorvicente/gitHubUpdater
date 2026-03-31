@@ -83,24 +83,33 @@ fun SettingsContent(
                     checked = settings.deleteApkAfterInstall,
                     onCheckedChange = onSetDeleteApkAfterInstall,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Download folder",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        text = downloadLocationSummary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = onPickDownloadFolder) {
-                        Text("Choose folder")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "Download folder",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = downloadLocationSummary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                    if (!settings.usesDefaultDownloadDirectory) {
-                        OutlinedButton(onClick = onUseDefaultDownloadLocation) {
-                            Text("Use default")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (!settings.usesDefaultDownloadDirectory) {
+                            OutlinedButton(onClick = onUseDefaultDownloadLocation) {
+                                Text("Use default")
+                            }
+                        }
+                        Button(onClick = onPickDownloadFolder) {
+                            Text("Choose")
                         }
                     }
                 }
