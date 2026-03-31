@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
             notificationManager.notify(
                 downloadNotificationIdFor(packageName),
                 NotificationCompat.Builder(this, DOWNLOAD_CHANNEL_ID)
-                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setContentTitle(displayName)
                     .setContentText(downloadNotificationText(progress))
                     .setSubText(downloadNotificationSubtext(progress))
