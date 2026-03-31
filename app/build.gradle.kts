@@ -107,6 +107,8 @@ dependencies {
     implementation(libs.google.material)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.compose.richtext.ui.material3)
+    implementation(libs.compose.richtext.commonmark)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

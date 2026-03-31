@@ -157,6 +157,7 @@ class AppRepository(
             ),
             publishedAt = Instant.parse(release.publishedAt),
             asset = asset,
+            changelog = release.body,
         )
     }
 

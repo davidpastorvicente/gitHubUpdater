@@ -28,6 +28,7 @@ data class ReleaseItem(
     val versionName: String,
     val publishedAt: Instant,
     val asset: ReleaseAsset,
+    val changelog: String,
 )
 
 sealed interface AvailabilityState {
