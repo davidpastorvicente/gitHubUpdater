@@ -8,6 +8,12 @@ data class InstalledAppInfo(
     val versionCode: Long,
 )
 
+enum class AppAction {
+    Install,
+    Update,
+    Uninstall,
+}
+
 data class ReleaseAsset(
     val id: Long,
     val name: String,
@@ -46,6 +52,7 @@ enum class InstallStage {
 
 data class InstallProgress(
     val stage: InstallStage,
+    val action: AppAction = AppAction.Install,
     val downloadedBytes: Long = 0,
     val totalBytes: Long? = null,
 ) {

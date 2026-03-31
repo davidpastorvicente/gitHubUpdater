@@ -11,6 +11,7 @@ import android.text.format.Formatter
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.davidpv.githubupdater.GitHubUpdaterApplication
+import com.davidpv.githubupdater.data.model.AppAction
 import com.davidpv.githubupdater.data.model.InstallProgress
 import com.davidpv.githubupdater.data.model.InstallStage
 import com.davidpv.githubupdater.data.model.ReleaseAsset
@@ -51,8 +52,11 @@ class DownloadService : Service() {
                 val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: return START_NOT_STICKY
                 val assetJson = intent.getStringExtra(EXTRA_ASSET_JSON) ?: return START_NOT_STICKY
                 val displayName = intent.getStringExtra(EXTRA_DISPLAY_NAME) ?: "App"
+                val action = intent.getStringExtra(EXTRA_ACTION)
+                    ?.let(AppAction::valueOf)
+                    ?: AppAction.Install
                 val asset = Json.decodeFromString<SerializableAsset>(assetJson).toReleaseAsset()
-                startDownload(packageName, displayName, asset)
+                startDownload(packageName, displayName, asset, action)
             }
             ACTION_CANCEL_DOWNLOAD -> {
                 val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: return START_NOT_STICKY
@@ -64,7 +68,12 @@ class DownloadService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun startDownload(packageName: String, displayName: String, asset: ReleaseAsset) {
+    private fun startDownload(
+        packageName: String,
+        displayName: String,
+        asset: ReleaseAsset,
+        action: AppAction,
+    ) {
         if (activeJobs.containsKey(packageName)) return
 
         acquireLocks()
@@ -72,7 +81,7 @@ class DownloadService : Service() {
 
         val job = serviceScope.launch {
             runCatching {
-                installer.install(packageName, asset) { progress ->
+                installer.install(packageName, asset, action) { progress ->
                     _progressEvents.tryEmit(DownloadProgressEvent(packageName, progress))
                     updateNotification(packageName, displayName, progress)
                 }
@@ -183,6 +192,7 @@ class DownloadService : Service() {
         private const val EXTRA_PACKAGE_NAME = "package_name"
         private const val EXTRA_ASSET_JSON = "asset_json"
         private const val EXTRA_DISPLAY_NAME = "display_name"
+        private const val EXTRA_ACTION = "action"
         const val CHANNEL_ID = "download_progress"
 
         private val _progressEvents = MutableSharedFlow<DownloadProgressEvent>(
@@ -191,16 +201,23 @@ class DownloadService : Service() {
         )
         val progressEvents = _progressEvents.asSharedFlow()
 
-        fun startDownload(context: Context, packageName: String, displayName: String, asset: ReleaseAsset) {
+        fun startDownload(
+            context: Context,
+            packageName: String,
+            displayName: String,
+            asset: ReleaseAsset,
+            appAction: AppAction,
+        ) {
             val assetJson = Json.encodeToString(
                 SerializableAsset.serializer(),
                 SerializableAsset.from(asset),
             )
             val intent = Intent(context, DownloadService::class.java).apply {
-                action = ACTION_START_DOWNLOAD
+                this.action = ACTION_START_DOWNLOAD
                 putExtra(EXTRA_PACKAGE_NAME, packageName)
                 putExtra(EXTRA_ASSET_JSON, assetJson)
                 putExtra(EXTRA_DISPLAY_NAME, displayName)
+                putExtra(EXTRA_ACTION, appAction.name)
             }
             context.startForegroundService(intent)
         }

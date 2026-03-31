@@ -1,6 +1,5 @@
 package com.davidpv.githubupdater.ui
 
-import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -69,13 +68,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import androidx.core.net.toUri
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
+import com.davidpv.githubupdater.data.model.AppAction
 import com.davidpv.githubupdater.data.model.AvailabilityState
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
 import com.davidpv.githubupdater.data.model.InstallProgress
@@ -104,6 +103,7 @@ fun MainScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onRequestUninstall: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
     onSetThemeMode: (ThemeMode) -> Unit,
@@ -131,6 +131,7 @@ fun MainScreen(
             onRefresh = onRefresh,
             onPrimaryAction = onPrimaryAction,
             onCancelInstall = onCancelInstall,
+            onRequestUninstall = onRequestUninstall,
             onOpenSettings = onOpenSettings,
             onSetThemeMode = onSetThemeMode,
             onSetDynamicColor = onSetDynamicColor,
@@ -152,6 +153,7 @@ fun MainScreen(
             onRefresh = onRefresh,
             onPrimaryAction = onPrimaryAction,
             onCancelInstall = onCancelInstall,
+            onRequestUninstall = onRequestUninstall,
             onOpenSettings = onOpenSettings,
             onCloseSettings = onCloseSettings,
             onSetThemeMode = onSetThemeMode,
@@ -179,6 +181,7 @@ private fun CompactMainScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onRequestUninstall: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
     onSetThemeMode: (ThemeMode) -> Unit,
@@ -208,6 +211,7 @@ private fun CompactMainScreen(
                 onRefresh = onRefresh,
                 onPrimaryAction = onPrimaryAction,
                 onCancelInstall = onCancelInstall,
+                onRequestUninstall = onRequestUninstall,
                 onOpenSettings = {
                     onOpenSettings()
                     navController.navigate(SETTINGS_ROUTE)
@@ -296,6 +300,7 @@ private fun ExpandedMainScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onRequestUninstall: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onSetThemeMode: (ThemeMode) -> Unit,
     onSetDynamicColor: (Boolean) -> Unit,
@@ -360,6 +365,7 @@ private fun ExpandedMainScreen(
                     onRefresh = onRefresh,
                     onPrimaryAction = onPrimaryAction,
                     onCancelInstall = onCancelInstall,
+                    onRequestUninstall = onRequestUninstall,
                     onOpenAppDetails = { packageName ->
                         isAddingApp = false
                         editingPackageName = null
@@ -437,6 +443,7 @@ private fun AppListScreen(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onRequestUninstall: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onEditApp: (String) -> Unit,
@@ -475,6 +482,7 @@ private fun AppListScreen(
                 onRefresh = onRefresh,
                 onPrimaryAction = onPrimaryAction,
                 onCancelInstall = onCancelInstall,
+                onRequestUninstall = onRequestUninstall,
                 onOpenAppDetails = onOpenAppDetails,
                 onEditApp = onEditApp,
             )
@@ -488,6 +496,7 @@ private fun AppListContent(
     onRefresh: () -> Unit,
     onPrimaryAction: (ManagedApp) -> Unit,
     onCancelInstall: (String) -> Unit,
+    onRequestUninstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onEditApp: (String) -> Unit,
 ) {
@@ -552,8 +561,10 @@ private fun AppListContent(
                     AppCard(
                         app = app,
                         installProgress = state.installProgressByPackageName[app.packageName],
+                        pendingAction = state.pendingActionsByPackageName[app.packageName],
                         onPrimaryAction = { onPrimaryAction(app) },
                         onCancelInstall = { onCancelInstall(app.packageName) },
+                        onRequestUninstall = { onRequestUninstall(app.packageName) },
                         onOpenHistory = { onOpenAppDetails(app.packageName) },
                         onEditConfig = { onEditApp(app.packageName) },
                     )
@@ -633,12 +644,15 @@ private fun EmptyDetailPane() {
 private fun AppCard(
     app: ManagedApp,
     installProgress: InstallProgress?,
+    pendingAction: AppAction?,
     onPrimaryAction: () -> Unit,
     onCancelInstall: () -> Unit,
+    onRequestUninstall: () -> Unit,
     onOpenHistory: () -> Unit,
     onEditConfig: () -> Unit,
 ) {
-    val isBusy = installProgress != null
+    val uninstallInProgress = pendingAction == AppAction.Uninstall
+    val isBusy = installProgress != null || uninstallInProgress
     val canCancel = installProgress?.let(::progressCanBeCancelled) == true
     val hasRemoteRelease = app.availabilityState !is AvailabilityState.NoRemoteRelease
     val isInstalled = app.installedVersionName != null
@@ -772,9 +786,7 @@ private fun AppCard(
                                         text = { Text("Uninstall") },
                                         onClick = {
                                             menuExpanded = false
-                                            val intent = Intent(Intent.ACTION_DELETE,
-                                                "package:${app.packageName}".toUri())
-                                            context.startActivity(intent)
+                                            onRequestUninstall()
                                         },
                                         leadingIcon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
                                     )
@@ -952,8 +964,10 @@ private fun AppCardPreview() {
         AppCard(
             app = previewApps().first(),
             installProgress = null,
+            pendingAction = null,
             onPrimaryAction = {},
             onCancelInstall = {},
+            onRequestUninstall = {},
             onOpenHistory = {},
             onEditConfig = {},
         )
@@ -970,6 +984,7 @@ private fun ExpandedScreenPreview() {
             onRefresh = {},
             onPrimaryAction = {},
             onCancelInstall = {},
+            onRequestUninstall = {},
             onOpenSettings = {},
             onSetThemeMode = {},
             onSetDynamicColor = {},

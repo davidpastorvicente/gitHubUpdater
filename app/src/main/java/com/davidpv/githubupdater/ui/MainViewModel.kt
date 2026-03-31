@@ -9,7 +9,9 @@ import com.davidpv.githubupdater.data.AppRepository
 import com.davidpv.githubupdater.data.local.AppCatalogRepository
 import com.davidpv.githubupdater.data.local.AppSettingsRepository
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
+import com.davidpv.githubupdater.data.model.AppAction
 import com.davidpv.githubupdater.data.model.AppSettings
+import com.davidpv.githubupdater.data.model.AvailabilityState
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
 import com.davidpv.githubupdater.data.model.InstallProgress
 import com.davidpv.githubupdater.data.model.InstallStage
@@ -35,6 +37,7 @@ data class MainUiState(
     val isRefreshing: Boolean = false,
     val installProgressByPackageName: Map<String, InstallProgress> = emptyMap(),
     val errorMessage: String? = null,
+    val pendingActionsByPackageName: Map<String, AppAction> = emptyMap(),
 )
 
 class MainViewModel(
@@ -155,7 +158,9 @@ class MainViewModel(
             when {
                 app == null -> false
                 progress.stage != InstallStage.AwaitingConfirmation -> true
-                app.installedVersionName == null -> true
+                progress.action == AppAction.Install && app.installedVersionName == null -> true
+                progress.action == AppAction.Update &&
+                    (app.installedVersionName == null || app.availabilityState is AvailabilityState.UpdateAvailable) -> true
                 else -> false
             }
         }
@@ -173,13 +178,25 @@ class MainViewModel(
         val asset = app.latestAsset ?: return
         if (_uiState.value.installProgressByPackageName.containsKey(app.packageName)) return
 
-        updateInstallProgress(app.packageName, InstallProgress(stage = InstallStage.CheckingCache))
-        DownloadService.startDownload(appContext, app.packageName, app.displayName, asset)
+        val action = if (app.installedVersionName == null) AppAction.Install else AppAction.Update
+        rememberPendingAction(app.packageName, action)
+        updateInstallProgress(app.packageName, InstallProgress(stage = InstallStage.CheckingCache, action = action))
+        DownloadService.startDownload(appContext, app.packageName, app.displayName, asset, action)
     }
 
     fun cancelInstall(packageName: String) {
         DownloadService.cancelDownload(appContext, packageName)
         clearInstallProgress(packageName)
+        forgetPendingAction(packageName)
+    }
+
+    fun startUninstall(packageName: String) {
+        rememberPendingAction(packageName, AppAction.Uninstall)
+    }
+
+    fun clearUninstall(packageName: String) {
+        if (_uiState.value.installProgressByPackageName.containsKey(packageName)) return
+        forgetPendingAction(packageName)
     }
 
     fun openAppDetails(packageName: String) {
@@ -278,6 +295,18 @@ class MainViewModel(
     private fun clearInstallProgress(packageName: String) {
         _uiState.update { state ->
             state.copy(installProgressByPackageName = state.installProgressByPackageName - packageName)
+        }
+    }
+
+    private fun rememberPendingAction(packageName: String, action: AppAction) {
+        _uiState.update { state ->
+            state.copy(pendingActionsByPackageName = state.pendingActionsByPackageName + (packageName to action))
+        }
+    }
+
+    private fun forgetPendingAction(packageName: String) {
+        _uiState.update { state ->
+            state.copy(pendingActionsByPackageName = state.pendingActionsByPackageName - packageName)
         }
     }
 

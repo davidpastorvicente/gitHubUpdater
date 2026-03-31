@@ -1,5 +1,6 @@
 package com.davidpv.githubupdater.install
 
+import com.davidpv.githubupdater.data.model.AppAction
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -13,6 +14,7 @@ enum class InstallResultStatus {
 data class InstallResultEvent(
     val packageName: String,
     val status: InstallResultStatus,
+    val action: AppAction,
     val cleanupFailed: Boolean = false,
     val failureMessage: String? = null,
 )

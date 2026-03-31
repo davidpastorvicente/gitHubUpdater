@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import com.davidpv.githubupdater.data.local.AppSettingsRepository
+import com.davidpv.githubupdater.data.model.AppAction
 import com.davidpv.githubupdater.data.model.InstallProgress
 import com.davidpv.githubupdater.data.model.InstallStage
 import com.davidpv.githubupdater.data.model.ReleaseAsset
@@ -38,26 +39,29 @@ class ApkDownloadStore(
 
     suspend fun prepareApk(
         asset: ReleaseAsset,
+        action: AppAction = AppAction.Install,
         onProgress: (InstallProgress) -> Unit,
     ): DownloadedApk = withContext(Dispatchers.IO) {
         val customTreeUri = settingsRepository.currentSettings.customDownloadTreeUri?.let(Uri::parse)
         if (customTreeUri != null) {
-            prepareInCustomFolder(customTreeUri, asset, onProgress)
+            prepareInCustomFolder(customTreeUri, asset, action, onProgress)
         } else {
-            prepareInPublicDownloads(asset, onProgress)
+            prepareInPublicDownloads(asset, action, onProgress)
         }
     }
 
     private suspend fun prepareInPublicDownloads(
         asset: ReleaseAsset,
+        action: AppAction,
         onProgress: (InstallProgress) -> Unit,
     ): DownloadedApk {
-        onProgress(InstallProgress(stage = InstallStage.CheckingCache))
+        onProgress(InstallProgress(stage = InstallStage.CheckingCache, action = action))
         val existing = findPublicDownload(asset.name)
-        if (existing != null && isStoredApkValid(existing.uri, asset, onProgress)) {
+        if (existing != null && isStoredApkValid(existing.uri, asset, action, onProgress)) {
             onProgress(
                 InstallProgress(
                     stage = InstallStage.UsingCache,
+                    action = action,
                     downloadedBytes = existing.sizeBytes,
                     totalBytes = existing.sizeBytes,
                 ),
@@ -76,7 +80,7 @@ class ApkDownloadStore(
             ?: error("Unable to create the public download file.")
 
         return try {
-            val downloadedApk = downloadToUri(asset, uri, onProgress)
+            val downloadedApk = downloadToUri(asset, uri, action, onProgress)
             contentResolver.update(
                 uri,
                 ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
@@ -93,18 +97,20 @@ class ApkDownloadStore(
     private suspend fun prepareInCustomFolder(
         treeUri: Uri,
         asset: ReleaseAsset,
+        action: AppAction,
         onProgress: (InstallProgress) -> Unit,
     ): DownloadedApk {
         val root = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("The selected download folder is unavailable.")
 
-        onProgress(InstallProgress(stage = InstallStage.CheckingCache))
+        onProgress(InstallProgress(stage = InstallStage.CheckingCache, action = action))
         val existing = root.findFile(asset.name)
-        if (existing != null && isStoredApkValid(existing.uri, asset, onProgress)) {
+        if (existing != null && isStoredApkValid(existing.uri, asset, action, onProgress)) {
             val sizeBytes = querySize(existing.uri) ?: asset.sizeBytes
             onProgress(
                 InstallProgress(
                     stage = InstallStage.UsingCache,
+                    action = action,
                     downloadedBytes = sizeBytes,
                     totalBytes = sizeBytes,
                 ),
@@ -121,7 +127,7 @@ class ApkDownloadStore(
             ?: error("Unable to create the download file in the selected folder.")
 
         return try {
-            downloadToUri(asset, outputFile.uri, onProgress)
+            downloadToUri(asset, outputFile.uri, action, onProgress)
         } catch (error: Throwable) {
             outputFile.delete()
             throw error
@@ -131,6 +137,7 @@ class ApkDownloadStore(
     private suspend fun downloadToUri(
         asset: ReleaseAsset,
         uri: Uri,
+        action: AppAction,
         onProgress: (InstallProgress) -> Unit,
     ): DownloadedApk = withContext(Dispatchers.IO) {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -161,6 +168,7 @@ class ApkDownloadStore(
                             onProgress(
                                 InstallProgress(
                                     stage = InstallStage.Downloading,
+                                    action = action,
                                     downloadedBytes = downloadedBytes,
                                     totalBytes = totalBytes,
                                 ),
@@ -182,6 +190,7 @@ class ApkDownloadStore(
             expectedSizeBytes = asset.sizeBytes,
             precomputedDigest = digest.digest().toHexString(),
             sizeBytes = storedSize,
+            action = action,
             onProgress = onProgress,
         )
 
@@ -195,6 +204,7 @@ class ApkDownloadStore(
     private fun isStoredApkValid(
         uri: Uri,
         asset: ReleaseAsset,
+        action: AppAction,
         onProgress: (InstallProgress) -> Unit,
     ): Boolean {
         return runCatching {
@@ -204,6 +214,7 @@ class ApkDownloadStore(
                 expectedSizeBytes = asset.sizeBytes,
                 precomputedDigest = null,
                 sizeBytes = querySize(uri),
+                action = action,
                 onProgress = onProgress,
             )
             true
@@ -219,11 +230,13 @@ class ApkDownloadStore(
         expectedSizeBytes: Long,
         precomputedDigest: String?,
         sizeBytes: Long?,
+        action: AppAction,
         onProgress: (InstallProgress) -> Unit,
     ) {
         onProgress(
             InstallProgress(
                 stage = InstallStage.Verifying,
+                action = action,
                 downloadedBytes = sizeBytes ?: 0L,
                 totalBytes = sizeBytes?.takeIf { it > 0L },
             ),

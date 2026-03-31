@@ -12,11 +12,15 @@ import android.os.Build
 import android.provider.DocumentsContract
 import androidx.core.app.NotificationCompat
 import androidx.documentfile.provider.DocumentFile
+import com.davidpv.githubupdater.data.model.AppAction
 
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
         val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: return
+        val action = intent.getStringExtra(EXTRA_ACTION)
+            ?.let(AppAction::valueOf)
+            ?: AppAction.Install
 
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -41,6 +45,7 @@ class InstallResultReceiver : BroadcastReceiver() {
                     InstallResultEvent(
                         packageName = packageName,
                         status = InstallResultStatus.Success,
+                        action = action,
                         cleanupFailed = cleanupFailed,
                     ),
                 )
@@ -64,6 +69,7 @@ class InstallResultReceiver : BroadcastReceiver() {
                     InstallResultEvent(
                         packageName = packageName,
                         status = resultStatus,
+                        action = action,
                         failureMessage = failureMessage,
                     ),
                 )
@@ -113,6 +119,7 @@ class InstallResultReceiver : BroadcastReceiver() {
         const val EXTRA_PACKAGE_NAME = "install_package_name"
         const val EXTRA_APK_URI = "install_apk_uri"
         const val EXTRA_DELETE_APK_AFTER_INSTALL = "install_delete_apk_after_install"
+        const val EXTRA_ACTION = "install_action"
         const val INSTALL_CONFIRM_NOTIFICATION_ID = 0x1000_0000
         val recentlyCancelledPackages = mutableSetOf<String>()
     }
