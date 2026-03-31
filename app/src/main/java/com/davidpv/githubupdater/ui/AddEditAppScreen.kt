@@ -367,9 +367,9 @@ private suspend fun runTestConfig(
                 val versionName = if (state.versionRegex.isNotBlank()) {
                     val vr = state.versionRegex.removeSuffix("$") + "\\.apk$"
                     Regex(vr).find(asset.name)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
-                        ?: release.tagName
+                        ?: release.tagName.removePrefix("v").removePrefix("V")
                 } else {
-                    release.tagName
+                    release.tagName.removePrefix("v").removePrefix("V")
                 }
 
                 return TestResult.Success(
