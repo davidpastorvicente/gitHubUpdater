@@ -1,5 +1,6 @@
 package com.davidpv.githubupdater.ui
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -15,11 +16,9 @@ import com.davidpv.githubupdater.data.model.InstallStage
 import com.davidpv.githubupdater.data.model.ManagedApp
 import com.davidpv.githubupdater.data.model.ThemeMode
 import com.davidpv.githubupdater.data.remote.GitHubReleasesService
+import com.davidpv.githubupdater.install.DownloadService
 import com.davidpv.githubupdater.install.InstallResultEvents
 import com.davidpv.githubupdater.install.InstallResultStatus
-import com.davidpv.githubupdater.install.ReleaseInstaller
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,15 +38,14 @@ data class MainUiState(
 )
 
 class MainViewModel(
+    private val appContext: Context,
     private val repository: AppRepository,
     private val catalogRepository: AppCatalogRepository,
     private val settingsRepository: AppSettingsRepository,
     private val releasesService: GitHubReleasesService,
-    private val installer: ReleaseInstaller,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
-    private val installJobsByPackageName = mutableMapOf<String, Job>()
 
     init {
         viewModelScope.launch {
@@ -72,6 +70,18 @@ class MainViewModel(
                     }
 
                     InstallResultStatus.Cancelled -> Unit
+                }
+            }
+        }
+        viewModelScope.launch {
+            DownloadService.progressEvents.collect { event ->
+                when {
+                    event.cancelled -> clearInstallProgress(event.packageName)
+                    event.errorMessage != null -> {
+                        clearInstallProgress(event.packageName)
+                        _uiState.update { it.copy(errorMessage = event.errorMessage) }
+                    }
+                    event.progress != null -> updateInstallProgress(event.packageName, event.progress)
                 }
             }
         }
@@ -164,29 +174,11 @@ class MainViewModel(
         if (_uiState.value.installProgressByPackageName.containsKey(app.packageName)) return
 
         updateInstallProgress(app.packageName, InstallProgress(stage = InstallStage.CheckingCache))
-        val job = viewModelScope.launch {
-            runCatching {
-                installer.install(app.packageName, asset) { progress ->
-                    updateInstallProgress(app.packageName, progress)
-                }
-            }.onFailure { error ->
-                if (error is CancellationException) {
-                    clearInstallProgress(app.packageName)
-                } else {
-                    clearInstallProgress(app.packageName)
-                    _uiState.update {
-                        it.copy(errorMessage = error.message ?: "Install failed.")
-                    }
-                }
-            }.also {
-                installJobsByPackageName.remove(app.packageName)
-            }
-        }
-        installJobsByPackageName[app.packageName] = job
+        DownloadService.startDownload(appContext, app.packageName, app.displayName, asset)
     }
 
     fun cancelInstall(packageName: String) {
-        installJobsByPackageName.remove(packageName)?.cancel()
+        DownloadService.cancelDownload(appContext, packageName)
         clearInstallProgress(packageName)
     }
 
@@ -293,15 +285,15 @@ class MainViewModel(
         private val importJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
         fun factory(
+            appContext: Context,
             repository: AppRepository,
             catalogRepository: AppCatalogRepository,
             settingsRepository: AppSettingsRepository,
             releasesService: GitHubReleasesService,
-            installer: ReleaseInstaller,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return MainViewModel(repository, catalogRepository, settingsRepository, releasesService, installer) as T
+                return MainViewModel(appContext, repository, catalogRepository, settingsRepository, releasesService) as T
             }
         }
     }

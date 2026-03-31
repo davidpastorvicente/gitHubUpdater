@@ -1,5 +1,8 @@
 package com.davidpv.githubupdater.install
 
+import android.app.ActivityManager
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -7,6 +10,7 @@ import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.provider.DocumentsContract
+import androidx.core.app.NotificationCompat
 import androidx.documentfile.provider.DocumentFile
 
 class InstallResultReceiver : BroadcastReceiver() {
@@ -18,11 +22,16 @@ class InstallResultReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 pendingUserActionIntent(intent)?.let { confirmationIntent ->
                     confirmationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(confirmationIntent)
+                    if (isAppInForeground(context)) {
+                        context.startActivity(confirmationIntent)
+                    } else {
+                        showInstallNotification(context, confirmationIntent, packageName)
+                    }
                 }
             }
 
             PackageInstaller.STATUS_SUCCESS -> {
+                recentlyCancelledPackages.remove(packageName)
                 val cleanupFailed = if (intent.getBooleanExtra(EXTRA_DELETE_APK_AFTER_INSTALL, false)) {
                     deleteDownloadedApk(context, intent.getStringExtra(EXTRA_APK_URI))
                 } else {
@@ -42,6 +51,9 @@ class InstallResultReceiver : BroadcastReceiver() {
                     InstallResultStatus.Cancelled
                 } else {
                     InstallResultStatus.Failed
+                }
+                if (resultStatus == InstallResultStatus.Cancelled) {
+                    if (!recentlyCancelledPackages.add(packageName)) return
                 }
                 val failureMessage = if (resultStatus == InstallResultStatus.Failed) {
                     installFailureMessage(intent)
@@ -68,10 +80,41 @@ class InstallResultReceiver : BroadcastReceiver() {
         }
     }
 
+    private fun showInstallNotification(context: Context, confirmationIntent: Intent, packageName: String) {
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            packageName.hashCode(),
+            confirmationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(context, DownloadService.CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("Ready to install")
+            .setContentText("Tap to confirm installation")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        val nm = context.getSystemService(NotificationManager::class.java)
+        nm.notify(INSTALL_CONFIRM_NOTIFICATION_ID + packageName.hashCode(), notification)
+    }
+
+    private fun isAppInForeground(context: Context): Boolean {
+        val am = context.getSystemService(ActivityManager::class.java)
+        val appProcesses = am.runningAppProcesses ?: return false
+        return appProcesses.any {
+            it.processName == context.packageName &&
+                it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        }
+    }
+
     private companion object {
         const val EXTRA_PACKAGE_NAME = "install_package_name"
         const val EXTRA_APK_URI = "install_apk_uri"
         const val EXTRA_DELETE_APK_AFTER_INSTALL = "install_delete_apk_after_install"
+        const val INSTALL_CONFIRM_NOTIFICATION_ID = 0x1000_0000
+        val recentlyCancelledPackages = mutableSetOf<String>()
     }
 
     private fun installFailureMessage(intent: Intent): String {
