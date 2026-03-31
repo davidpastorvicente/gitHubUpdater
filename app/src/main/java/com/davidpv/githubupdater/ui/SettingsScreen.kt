@@ -1,13 +1,20 @@
 package com.davidpv.githubupdater.ui
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -20,13 +27,18 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.davidpv.githubupdater.data.model.AppSettings
 import com.davidpv.githubupdater.data.model.ThemeMode
@@ -40,6 +52,7 @@ fun SettingsContent(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     modifier: Modifier = Modifier,
@@ -125,6 +138,21 @@ fun SettingsContent(
 
         // App Configuration
         item {
+            SettingsSection(title = "GitHub") {
+                Text(
+                    text = "Optional token for authenticated requests and GraphQL batching",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                GitHubTokenField(
+                    value = settings.gitHubToken.orEmpty(),
+                    onValueChange = onSetGitHubToken,
+                )
+            }
+        }
+
+        // App Configuration
+        item {
             SettingsSection(title = "App configuration") {
                 Text(
                     text = "Import or export your app list as a JSON file",
@@ -139,6 +167,85 @@ fun SettingsContent(
                         Text("Export")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GitHubTokenField(
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    var text by remember(value) { mutableStateOf(value) }
+    LaunchedEffect(value) {
+        if (value != text) text = value
+    }
+    val trimmedText = text.trim()
+    val savedValue = value.trim()
+    val shape = RoundedCornerShape(12.dp)
+    val borderColor = MaterialTheme.colorScheme.outline
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicTextField(
+            value = text,
+            onValueChange = { text = it },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = PasswordVisualTransformation(),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .border(width = 1.dp, color = borderColor, shape = shape)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (text.isEmpty()) {
+                        Text(
+                            text = "ghp_...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = {
+                    text = ""
+                    onValueChange("")
+                },
+                enabled = text.isNotEmpty() || value.isNotEmpty(),
+            ) {
+                Text("Reset")
+            }
+            Button(
+                onClick = {
+                    onValueChange(trimmedText)
+                    focusManager.clearFocus(force = true)
+                },
+                enabled = trimmedText != savedValue,
+            ) {
+                Text("Save")
             }
         }
     }

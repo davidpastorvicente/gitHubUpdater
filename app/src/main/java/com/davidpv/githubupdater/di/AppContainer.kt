@@ -24,6 +24,7 @@ class AppContainer(context: Context) {
         releasesService = releasesService,
         installedAppInspector = installedAppInspector,
         releaseCacheRepository = releaseCacheRepository,
+        appSettingsRepository = appSettingsRepository,
     )
 
     val releaseInstaller = ReleaseInstaller(appContext, apkDownloadStore)

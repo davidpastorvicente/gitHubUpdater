@@ -240,6 +240,7 @@ class MainActivity : ComponentActivity() {
                     onSetDynamicColor = viewModel::setDynamicColor,
                     onSetDeleteApkAfterInstall = viewModel::setDeleteApkAfterInstall,
                     onSetRefreshOnStart = viewModel::setRefreshOnStart,
+                    onSetGitHubToken = viewModel::setGitHubToken,
                     onPickDownloadFolder = { pickDownloadFolderLauncher.launch(null) },
                     onUseDefaultDownloadLocation = viewModel::useDefaultDownloadLocation,
                     onOpenAppDetails = viewModel::openAppDetails,

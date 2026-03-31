@@ -1,6 +1,7 @@
 package com.davidpv.githubupdater.data
 
 import com.davidpv.githubupdater.data.local.AppCatalogRepository
+import com.davidpv.githubupdater.data.local.AppSettingsRepository
 import com.davidpv.githubupdater.data.local.InstalledAppInspector
 import com.davidpv.githubupdater.data.local.ReleaseCacheRepository
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
@@ -18,6 +19,7 @@ class AppRepository(
     private val releasesService: GitHubReleasesService,
     private val installedAppInspector: InstalledAppInspector,
     private val releaseCacheRepository: ReleaseCacheRepository,
+    private val appSettingsRepository: AppSettingsRepository,
 ) {
     private val cachedReleasesByPackageName = mutableMapOf<String, List<ReleaseItem>>()
 
@@ -25,24 +27,34 @@ class AppRepository(
         forceRemoteRefresh: Boolean = false,
         useCachedRemoteDataOnly: Boolean = false,
     ): List<ManagedApp> {
+        val supportedApps = appCatalogRepository.loadSupportedApps()
         val errors = mutableListOf<String>()
-        val apps = appCatalogRepository.loadSupportedApps().map { supportedApp ->
+        val latestReleasesByPackageName = if (useCachedRemoteDataOnly) {
+            emptyMap()
+        } else {
+            runCatching {
+                releasesService.fetchLatestReleasesBatch(
+                    apps = supportedApps,
+                    gitHubToken = appSettingsRepository.currentSettings.gitHubToken,
+                    forceRefresh = forceRemoteRefresh,
+                )
+            }.getOrElse { error ->
+                errors += error.message ?: "Failed to fetch latest releases."
+                emptyMap()
+            }
+        }
+        val apps = supportedApps.map { supportedApp ->
             val releases = if (useCachedRemoteDataOnly) {
                 cachedReleaseItemsFor(supportedApp)
             } else {
-                try {
-                    releasesService.fetchReleases(
-                        owner = supportedApp.releaseOwner,
-                        repo = supportedApp.releaseRepo,
-                        perPage = LATEST_RELEASES_PER_PAGE,
-                        forceRefresh = forceRemoteRefresh,
-                    ).also { releaseCacheRepository.save(supportedApp.packageName, it) }
-                        .let { toReleaseItems(releases = it, app = supportedApp) }
-                        .also { cachedReleasesByPackageName[supportedApp.packageName] = it }
-                } catch (e: Exception) {
-                    errors += "${supportedApp.displayName}: ${e.message}"
+                latestReleasesByPackageName[supportedApp.packageName]
+                    ?.also { releaseCacheRepository.save(supportedApp.packageName, it) }
+                    ?.let { toReleaseItems(releases = it, app = supportedApp) }
+                    ?.also { cachedReleasesByPackageName[supportedApp.packageName] = it }
+                    ?: run {
+                        errors += "${supportedApp.displayName}: Unable to load latest release."
                     cachedReleaseItemsFor(supportedApp)
-                }
+                    }
             }
 
             val latestRelease = releases.firstOrNull()
@@ -87,6 +99,7 @@ class AppRepository(
                 repo = app.releaseRepo,
                 perPage = HISTORY_RELEASES_PER_PAGE,
                 forceRefresh = true,
+                gitHubToken = appSettingsRepository.currentSettings.gitHubToken,
             ).also { releaseCacheRepository.save(packageName, it) }
         } else {
             val cached = releaseCacheRepository.load(packageName)
@@ -96,6 +109,7 @@ class AppRepository(
                     repo = app.releaseRepo,
                     perPage = HISTORY_RELEASES_PER_PAGE,
                     forceRefresh = false,
+                    gitHubToken = appSettingsRepository.currentSettings.gitHubToken,
                 ).also { releaseCacheRepository.save(packageName, it) }
             }
         }
@@ -205,7 +219,6 @@ class AppRepository(
     }
 
     private companion object {
-        const val LATEST_RELEASES_PER_PAGE = 1
         const val HISTORY_RELEASES_PER_PAGE = 10
         val versionRegex = Regex("\\d+")
 

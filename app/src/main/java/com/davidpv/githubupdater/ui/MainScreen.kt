@@ -37,20 +37,20 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,8 +73,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.AppAction
+import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.AvailabilityState
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
 import com.davidpv.githubupdater.data.model.InstallProgress
@@ -110,6 +110,7 @@ fun MainScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
@@ -139,6 +140,7 @@ fun MainScreen(
             onSetDynamicColor = onSetDynamicColor,
             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
             onSetRefreshOnStart = onSetRefreshOnStart,
+            onSetGitHubToken = onSetGitHubToken,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
@@ -164,6 +166,7 @@ fun MainScreen(
             onSetDynamicColor = onSetDynamicColor,
             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
             onSetRefreshOnStart = onSetRefreshOnStart,
+            onSetGitHubToken = onSetGitHubToken,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
@@ -194,6 +197,7 @@ private fun CompactMainScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
@@ -263,6 +267,7 @@ private fun CompactMainScreen(
                 onSetDynamicColor = onSetDynamicColor,
                 onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
                 onSetRefreshOnStart = onSetRefreshOnStart,
+                onSetGitHubToken = onSetGitHubToken,
                 onPickDownloadFolder = onPickDownloadFolder,
                 onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
                 onImportConfig = onImportConfig,
@@ -317,6 +322,7 @@ private fun ExpandedMainScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
@@ -401,6 +407,7 @@ private fun ExpandedMainScreen(
                             onSetDynamicColor = onSetDynamicColor,
                             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
                             onSetRefreshOnStart = onSetRefreshOnStart,
+                            onSetGitHubToken = onSetGitHubToken,
                             onPickDownloadFolder = onPickDownloadFolder,
                             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
                             onImportConfig = onImportConfig,
@@ -599,6 +606,7 @@ private fun SettingsRouteScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onImportConfig: () -> Unit,
@@ -629,6 +637,7 @@ private fun SettingsRouteScreen(
             onSetDynamicColor = onSetDynamicColor,
             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
             onSetRefreshOnStart = onSetRefreshOnStart,
+            onSetGitHubToken = onSetGitHubToken,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             modifier = Modifier.padding(innerPadding),
@@ -1008,6 +1017,7 @@ private fun ExpandedScreenPreview() {
             onSetDynamicColor = {},
             onSetDeleteApkAfterInstall = {},
             onSetRefreshOnStart = {},
+            onSetGitHubToken = {},
             onPickDownloadFolder = {},
             onUseDefaultDownloadLocation = {},
             onOpenAppDetails = {},

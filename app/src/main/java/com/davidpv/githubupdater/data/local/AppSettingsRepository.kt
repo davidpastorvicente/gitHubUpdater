@@ -45,6 +45,17 @@ class AppSettingsRepository(
         }
     }
 
+    fun setGitHubToken(token: String?) {
+        val normalizedToken = token?.trim().orEmpty().takeIf { it.isNotEmpty() }
+        updateSettings(currentSettings.copy(gitHubToken = normalizedToken)) {
+            if (normalizedToken == null) {
+                remove(KEY_GITHUB_TOKEN)
+            } else {
+                putString(KEY_GITHUB_TOKEN, normalizedToken)
+            }
+        }
+    }
+
     fun setCustomDownloadTreeUri(uri: Uri?) {
         updateSettings(currentSettings.copy(customDownloadTreeUri = uri?.toString())) {
             if (uri == null) {
@@ -68,6 +79,7 @@ class AppSettingsRepository(
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_DELETE_APK_AFTER_INSTALL = "delete_apk_after_install"
         private const val KEY_REFRESH_ON_START = "refresh_on_start"
+        private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_CUSTOM_DOWNLOAD_TREE_URI = "custom_download_tree_uri"
     }
 
@@ -80,6 +92,7 @@ class AppSettingsRepository(
             useDynamicColor = preferences.getBoolean(KEY_DYNAMIC_COLOR, true),
             deleteApkAfterInstall = preferences.getBoolean(KEY_DELETE_APK_AFTER_INSTALL, true),
             refreshOnStart = preferences.getBoolean(KEY_REFRESH_ON_START, true),
+            gitHubToken = preferences.getString(KEY_GITHUB_TOKEN, null),
             customDownloadTreeUri = preferences.getString(KEY_CUSTOM_DOWNLOAD_TREE_URI, null),
         )
     }

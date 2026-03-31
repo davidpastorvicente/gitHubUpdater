@@ -13,6 +13,7 @@ data class AppSettings(
     val useDynamicColor: Boolean = true,
     val deleteApkAfterInstall: Boolean = true,
     val refreshOnStart: Boolean = true,
+    val gitHubToken: String? = null,
     val customDownloadTreeUri: String? = null,
 ) {
     val usesDefaultDownloadDirectory: Boolean

@@ -8,8 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.davidpv.githubupdater.data.AppRepository
 import com.davidpv.githubupdater.data.local.AppCatalogRepository
 import com.davidpv.githubupdater.data.local.AppSettingsRepository
-import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.AppAction
+import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.AppSettings
 import com.davidpv.githubupdater.data.model.AvailabilityState
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
@@ -242,6 +242,10 @@ class MainViewModel(
         settingsRepository.setRefreshOnStart(enabled)
     }
 
+    fun setGitHubToken(token: String) {
+        settingsRepository.setGitHubToken(token)
+    }
+
     fun useDefaultDownloadLocation() {
         settingsRepository.setCustomDownloadTreeUri(null)
     }
@@ -291,7 +295,13 @@ class MainViewModel(
         catalogRepository.loadSupportedApps().firstOrNull { it.packageName == packageName }
 
     suspend fun testFetchReleases(owner: String, repo: String): List<GitHubReleaseResponse> =
-        releasesService.fetchReleases(owner = owner, repo = repo, perPage = 10, forceRefresh = true)
+        releasesService.fetchReleases(
+            owner = owner,
+            repo = repo,
+            perPage = 10,
+            forceRefresh = true,
+            gitHubToken = settingsRepository.currentSettings.gitHubToken,
+        )
 
     fun loadHistory(packageName: String, forceRemoteRefresh: Boolean = false) {
         viewModelScope.launch {
