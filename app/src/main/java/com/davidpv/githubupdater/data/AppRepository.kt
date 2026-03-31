@@ -2,6 +2,7 @@ package com.davidpv.githubupdater.data
 
 import com.davidpv.githubupdater.data.local.AppCatalogRepository
 import com.davidpv.githubupdater.data.local.InstalledAppInspector
+import com.davidpv.githubupdater.data.local.ReleaseCacheRepository
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.AvailabilityState
 import com.davidpv.githubupdater.data.model.GitHubAssetResponse
@@ -16,6 +17,7 @@ class AppRepository(
     private val appCatalogRepository: AppCatalogRepository,
     private val releasesService: GitHubReleasesService,
     private val installedAppInspector: InstalledAppInspector,
+    private val releaseCacheRepository: ReleaseCacheRepository,
 ) {
     private val cachedReleasesByPackageName = mutableMapOf<String, List<ReleaseItem>>()
 
@@ -26,7 +28,7 @@ class AppRepository(
         val errors = mutableListOf<String>()
         val apps = appCatalogRepository.loadSupportedApps().map { supportedApp ->
             val releases = if (useCachedRemoteDataOnly) {
-                cachedReleasesByPackageName[supportedApp.packageName].orEmpty()
+                cachedReleaseItemsFor(supportedApp)
             } else {
                 try {
                     releasesService.fetchReleases(
@@ -34,16 +36,12 @@ class AppRepository(
                         repo = supportedApp.releaseRepo,
                         perPage = RELEASES_PER_PAGE,
                         forceRefresh = forceRemoteRefresh,
-                    )
-                        .asSequence()
-                        .filterNot { it.draft || it.prerelease }
-                        .mapNotNull { toReleaseItem(release = it, app = supportedApp) }
-                        .sortedByDescending(ReleaseItem::publishedAt)
-                        .toList()
+                    ).also { releaseCacheRepository.save(supportedApp.packageName, it) }
+                        .let { toReleaseItems(releases = it, app = supportedApp) }
                         .also { cachedReleasesByPackageName[supportedApp.packageName] = it }
                 } catch (e: Exception) {
                     errors += "${supportedApp.displayName}: ${e.message}"
-                    cachedReleasesByPackageName[supportedApp.packageName].orEmpty()
+                    cachedReleaseItemsFor(supportedApp)
                 }
             }
 
@@ -81,6 +79,23 @@ class AppRepository(
         val apps: List<ManagedApp>,
         val errors: List<String>,
     ) : Exception(deduplicateErrors(errors))
+
+    private fun cachedReleaseItemsFor(app: AppCatalogEntry): List<ReleaseItem> {
+        return cachedReleasesByPackageName[app.packageName]
+            ?: toReleaseItems(releases = releaseCacheRepository.load(app.packageName), app = app)
+                .also { cachedReleasesByPackageName[app.packageName] = it }
+    }
+
+    private fun toReleaseItems(
+        releases: List<GitHubReleaseResponse>,
+        app: AppCatalogEntry,
+    ): List<ReleaseItem> {
+        return releases.asSequence()
+            .filterNot { it.draft || it.prerelease }
+            .mapNotNull { toReleaseItem(release = it, app = app) }
+            .sortedByDescending(ReleaseItem::publishedAt)
+            .toList()
+    }
 
     private fun toReleaseItem(
         release: GitHubReleaseResponse,

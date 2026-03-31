@@ -239,6 +239,7 @@ class MainActivity : ComponentActivity() {
                     onSetThemeMode = viewModel::setThemeMode,
                     onSetDynamicColor = viewModel::setDynamicColor,
                     onSetDeleteApkAfterInstall = viewModel::setDeleteApkAfterInstall,
+                    onSetRefreshOnStart = viewModel::setRefreshOnStart,
                     onPickDownloadFolder = { pickDownloadFolderLauncher.launch(null) },
                     onUseDefaultDownloadLocation = viewModel::useDefaultDownloadLocation,
                     onOpenAppDetails = viewModel::openAppDetails,

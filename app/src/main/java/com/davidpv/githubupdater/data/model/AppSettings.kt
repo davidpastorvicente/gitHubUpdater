@@ -12,6 +12,7 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
     val useDynamicColor: Boolean = true,
     val deleteApkAfterInstall: Boolean = true,
+    val refreshOnStart: Boolean = true,
     val customDownloadTreeUri: String? = null,
 ) {
     val usesDefaultDownloadDirectory: Boolean

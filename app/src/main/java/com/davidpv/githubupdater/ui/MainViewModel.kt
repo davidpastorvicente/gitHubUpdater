@@ -88,7 +88,11 @@ class MainViewModel(
                 }
             }
         }
-        refresh()
+        if (settingsRepository.currentSettings.refreshOnStart) {
+            refresh()
+        } else {
+            refreshLocalStatus()
+        }
     }
 
     fun refresh(forceRemoteRefresh: Boolean = false) {
@@ -230,6 +234,10 @@ class MainViewModel(
 
     fun setDeleteApkAfterInstall(enabled: Boolean) {
         settingsRepository.setDeleteApkAfterInstall(enabled)
+    }
+
+    fun setRefreshOnStart(enabled: Boolean) {
+        settingsRepository.setRefreshOnStart(enabled)
     }
 
     fun useDefaultDownloadLocation() {

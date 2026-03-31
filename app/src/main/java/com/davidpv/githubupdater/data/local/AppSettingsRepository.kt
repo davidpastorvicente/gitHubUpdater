@@ -39,6 +39,12 @@ class AppSettingsRepository(
         }
     }
 
+    fun setRefreshOnStart(enabled: Boolean) {
+        updateSettings(currentSettings.copy(refreshOnStart = enabled)) {
+            putBoolean(KEY_REFRESH_ON_START, enabled)
+        }
+    }
+
     fun setCustomDownloadTreeUri(uri: Uri?) {
         updateSettings(currentSettings.copy(customDownloadTreeUri = uri?.toString())) {
             if (uri == null) {
@@ -61,6 +67,7 @@ class AppSettingsRepository(
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_DELETE_APK_AFTER_INSTALL = "delete_apk_after_install"
+        private const val KEY_REFRESH_ON_START = "refresh_on_start"
         private const val KEY_CUSTOM_DOWNLOAD_TREE_URI = "custom_download_tree_uri"
     }
 
@@ -72,6 +79,7 @@ class AppSettingsRepository(
             themeMode = themeMode,
             useDynamicColor = preferences.getBoolean(KEY_DYNAMIC_COLOR, true),
             deleteApkAfterInstall = preferences.getBoolean(KEY_DELETE_APK_AFTER_INSTALL, true),
+            refreshOnStart = preferences.getBoolean(KEY_REFRESH_ON_START, true),
             customDownloadTreeUri = preferences.getString(KEY_CUSTOM_DOWNLOAD_TREE_URI, null),
         )
     }

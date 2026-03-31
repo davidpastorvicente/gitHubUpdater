@@ -39,6 +39,7 @@ fun SettingsContent(
     onSetThemeMode: (ThemeMode) -> Unit,
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
+    onSetRefreshOnStart: (Boolean) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     modifier: Modifier = Modifier,
@@ -78,7 +79,13 @@ fun SettingsContent(
         item {
             SettingsSection(title = "Downloads") {
                 SettingsSwitchRow(
-                    title = "Delete APK after install",
+                    title = "Refresh on start",
+                    subtitle = "Fetch latest releases from GitHub when the app opens",
+                    checked = settings.refreshOnStart,
+                    onCheckedChange = onSetRefreshOnStart,
+                )
+                SettingsSwitchRow(
+                    title = "Delete APKs after install",
                     subtitle = "Remove downloaded APK files automatically",
                     checked = settings.deleteApkAfterInstall,
                     onCheckedChange = onSetDeleteApkAfterInstall,
@@ -230,4 +237,3 @@ private val ThemeMode.label: String
         ThemeMode.Light -> "Light"
         ThemeMode.Dark -> "Dark"
     }
-
