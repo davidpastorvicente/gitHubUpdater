@@ -3,7 +3,10 @@ package com.davidpv.githubupdater
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +19,7 @@ import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -54,6 +58,22 @@ class MainActivity : ComponentActivity() {
                 ),
             )
             val state by viewModel.uiState.collectAsStateWithLifecycle()
+            DisposableEffect(Unit) {
+                val receiver = object : BroadcastReceiver() {
+                    override fun onReceive(context: Context, intent: Intent) {
+                        viewModel.refreshLocalStatus()
+                    }
+                }
+                val filter = IntentFilter().apply {
+                    addAction(Intent.ACTION_PACKAGE_ADDED)
+                    addAction(Intent.ACTION_PACKAGE_REPLACED)
+                    addAction(Intent.ACTION_PACKAGE_REMOVED)
+                    addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)
+                    addDataScheme("package")
+                }
+                registerReceiver(receiver, filter)
+                onDispose { unregisterReceiver(receiver) }
+            }
             LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshLocalStatus()
             }
