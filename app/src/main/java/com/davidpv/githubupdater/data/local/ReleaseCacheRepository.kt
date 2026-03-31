@@ -23,7 +23,11 @@ class ReleaseCacheRepository(context: Context) {
         return cached[packageName].orEmpty()
     }
 
-    fun save(packageName: String, releases: List<GitHubReleaseResponse>) {
+    fun save(
+        packageName: String,
+        releases: List<GitHubReleaseResponse>,
+        includesHistory: Boolean = false,
+    ) {
         val current = loadAll().toMutableMap()
         current[packageName] = (current[packageName].orEmpty() + releases)
             .distinctBy(GitHubReleaseResponse::id)
@@ -36,8 +40,16 @@ class ReleaseCacheRepository(context: Context) {
                     current,
                 ),
             )
+            if (includesHistory) {
+                putStringSet(
+                    KEY_HISTORY_PACKAGES,
+                    historyPackages().plus(packageName),
+                )
+            }
         }
     }
+
+    fun hasHistory(packageName: String): Boolean = historyPackages().contains(packageName)
 
     private fun loadAll(): Map<String, List<GitHubReleaseResponse>> {
         val raw = preferences.getString(KEY_RELEASES_BY_PACKAGE, null) ?: return emptyMap()
@@ -49,9 +61,13 @@ class ReleaseCacheRepository(context: Context) {
         }.getOrDefault(emptyMap())
     }
 
+    private fun historyPackages(): Set<String> =
+        preferences.getStringSet(KEY_HISTORY_PACKAGES, emptySet()).orEmpty()
+
     private companion object {
         const val PREFERENCES_NAME = "release_cache"
         const val KEY_RELEASES_BY_PACKAGE = "releases_by_package"
+        const val KEY_HISTORY_PACKAGES = "history_packages"
     }
 }
 

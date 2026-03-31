@@ -48,7 +48,7 @@ class AppRepository(
                 cachedReleaseItemsFor(supportedApp)
             } else {
                 latestReleasesByPackageName[supportedApp.packageName]
-                    ?.also { releaseCacheRepository.save(supportedApp.packageName, it) }
+                    ?.also { releaseCacheRepository.save(supportedApp.packageName, it, includesHistory = false) }
                     ?.let { toReleaseItems(releases = it, app = supportedApp) }
                     ?.also { cachedReleasesByPackageName[supportedApp.packageName] = it }
                     ?: run {
@@ -100,17 +100,17 @@ class AppRepository(
                 perPage = HISTORY_RELEASES_PER_PAGE,
                 forceRefresh = true,
                 gitHubToken = appSettingsRepository.currentSettings.gitHubToken,
-            ).also { releaseCacheRepository.save(packageName, it) }
+            ).also { releaseCacheRepository.save(packageName, it, includesHistory = true) }
         } else {
             val cached = releaseCacheRepository.load(packageName)
-            cached.ifEmpty {
+            cached.takeIf { it.isNotEmpty() && releaseCacheRepository.hasHistory(packageName) } ?: run {
                 releasesService.fetchReleases(
                     owner = app.releaseOwner,
                     repo = app.releaseRepo,
                     perPage = HISTORY_RELEASES_PER_PAGE,
                     forceRefresh = false,
                     gitHubToken = appSettingsRepository.currentSettings.gitHubToken,
-                ).also { releaseCacheRepository.save(packageName, it) }
+                ).also { releaseCacheRepository.save(packageName, it, includesHistory = true) }
             }
         }
         return toReleaseItems(releases = releases, app = app)
