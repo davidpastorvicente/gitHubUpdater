@@ -80,7 +80,7 @@ class AppRepository(
     class PartialLoadException(
         val apps: List<ManagedApp>,
         val errors: List<String>,
-    ) : Exception(errors.joinToString("\n"))
+    ) : Exception(deduplicateErrors(errors))
 
     private fun toReleaseItem(
         release: GitHubReleaseResponse,
@@ -164,5 +164,12 @@ class AppRepository(
     private companion object {
         const val RELEASES_PER_PAGE = 10
         val versionRegex = Regex("\\d+")
+
+        fun deduplicateErrors(errors: List<String>): String {
+            val grouped = errors.groupBy { it.substringAfter(": ", it) }
+            return grouped.map { (message, entries) ->
+                if (entries.size > 1) message else entries.first()
+            }.joinToString("\n")
+        }
     }
 }
