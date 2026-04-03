@@ -34,8 +34,11 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -245,6 +248,8 @@ private fun ChangelogDialog(
     onDismiss: () -> Unit,
 ) {
     val changelog = release.changelog.ifBlank { "No changelog provided for this release." }
+    var contentReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { contentReady = true }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -267,20 +272,29 @@ private fun ChangelogDialog(
                     text = "Version ${release.versionName}",
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                Column(
+                Box(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .fillMaxWidth(),
                 ) {
-                    Text(
-                        text = DATE_TIME_FORMATTER.format(release.publishedAt.atZone(ZoneId.systemDefault())),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    RichText {
-                        Markdown(content = changelog)
+                    if (contentReady) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(
+                                text = DATE_TIME_FORMATTER.format(release.publishedAt.atZone(ZoneId.systemDefault())),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            RichText {
+                                Markdown(content = changelog)
+                            }
+                        }
+                    } else {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
                 }
                 Row(
