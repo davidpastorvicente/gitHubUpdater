@@ -754,26 +754,42 @@ private fun AppCard(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        FilledIconActionButton(
-                            onClick = if (canCancel) onCancelInstall else onPrimaryAction,
-                            enabled = if (canCancel) {
-                                true
-                            } else {
-                                app.latestAsset != null && isActionable && !isBusy
-                            },
-                        ) {
-                            if (canCancel) {
+                        val isUpdated = isInstalled && !isActionable && !isBusy
+                        if (isUpdated) {
+                            FilledIconActionButton(
+                                onClick = {
+                                    context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                        ?.let { context.startActivity(it) }
+                                },
+                                enabled = context.packageManager.getLaunchIntentForPackage(app.packageName) != null,
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "Cancel download",
+                                    imageVector = Icons.AutoMirrored.Rounded.Launch,
+                                    contentDescription = "Open",
                                 )
-                            } else if (isBusy) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(
-                                    imageVector = actionIcon,
-                                    contentDescription = actionDescription,
-                                )
+                            }
+                        } else {
+                            FilledIconActionButton(
+                                onClick = if (canCancel) onCancelInstall else onPrimaryAction,
+                                enabled = if (canCancel) {
+                                    true
+                                } else {
+                                    app.latestAsset != null && isActionable && !isBusy
+                                },
+                            ) {
+                                if (canCancel) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = "Cancel download",
+                                    )
+                                } else if (isBusy) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(
+                                        imageVector = actionIcon,
+                                        contentDescription = actionDescription,
+                                    )
+                                }
                             }
                         }
 
@@ -789,7 +805,7 @@ private fun AppCard(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false },
                             ) {
-                                if (isInstalled) {
+                                if (isInstalled && !isUpdated) {
                                     DropdownMenuItem(
                                         text = { Text("Open") },
                                         onClick = {
