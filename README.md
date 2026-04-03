@@ -1,8 +1,6 @@
 [![Release APK](https://github.com/davidpastorvicente/gitHubUpdater/actions/workflows/release-apk.yml/badge.svg)](https://github.com/davidpastorvicente/gitHubUpdater/actions/workflows/release-apk.yml)
 
-# GitHub Updater
-
-![GitHub Updater app icon](app/src/main/ic_launcher-playstore.png)
+<h1><img src="app/src/main/ic_launcher-playstore.png" alt="App icon" height="48" valign="middle"> GitHub Updater</h1>
 
 An Android app for tracking and installing upstream APK releases outside of Google Play.
 
