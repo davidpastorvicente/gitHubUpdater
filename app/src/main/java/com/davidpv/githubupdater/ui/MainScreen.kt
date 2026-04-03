@@ -722,7 +722,9 @@ private fun AppCard(
                             )
 
                             Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(
+                                    if (showLatestVersion && showInstalledVersion) 2.dp else 6.dp,
+                                ),
                             ) {
                                 Text(
                                     text = app.displayName,
@@ -730,11 +732,17 @@ private fun AppCard(
                                     fontWeight = FontWeight.SemiBold,
                                 )
 
-                                if (showLatestVersion) {
-                                    VersionLine(label = "Latest", value = app.latestVersionName)
-                                }
-                                if (showInstalledVersion) {
-                                    VersionLine(label = "Installed", value = app.installedVersionName)
+                                if (showLatestVersion || showInstalledVersion) {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                                    ) {
+                                        if (showLatestVersion) {
+                                            VersionLine(label = "Latest", value = app.latestVersionName)
+                                        }
+                                        if (showInstalledVersion) {
+                                            VersionLine(label = "Installed", value = app.installedVersionName)
+                                        }
+                                    }
                                 }
                             }
                         }
