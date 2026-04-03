@@ -684,7 +684,9 @@ private fun AppCard(
     val hasRemoteRelease = app.availabilityState !is AvailabilityState.NoRemoteRelease
     val isInstalled = app.installedVersionName != null
     val context = LocalContext.current
-    val showLatestVersion = app.latestVersionName != null && app.availabilityState !is AvailabilityState.Current
+    val isActionable = app.availabilityState is AvailabilityState.UpdateAvailable ||
+        app.availabilityState is AvailabilityState.NotInstalled
+    val showLatestVersion = app.latestVersionName != null && isActionable
     val showInstalledVersion = app.installedVersionName != null
     val actionIcon = when (app.availabilityState) {
         is AvailabilityState.UpdateAvailable -> Icons.Rounded.SystemUpdateAlt
@@ -757,7 +759,7 @@ private fun AppCard(
                             enabled = if (canCancel) {
                                 true
                             } else {
-                                app.latestAsset != null && app.availabilityState !is AvailabilityState.Current && !isBusy
+                                app.latestAsset != null && isActionable && !isBusy
                             },
                         ) {
                             if (canCancel) {

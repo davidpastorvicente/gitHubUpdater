@@ -185,7 +185,15 @@ class AppRepository(
     }
 
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {
-        return installedVersion == latestVersion || compareVersions(installedVersion, latestVersion) == 0
+        if (installedVersion == latestVersion) return true
+        if (compareVersions(installedVersion, latestVersion) == 0) return true
+        // Handle builds where installed appends a suffix (e.g. git hash) to the release version:
+        // "4.7.2-25.20.0_b05ff8e" should be considered current against "4.7.2-25.20.0"
+        if (installedVersion.startsWith(latestVersion) &&
+            installedVersion.length > latestVersion.length &&
+            !installedVersion[latestVersion.length].isDigit()
+        ) return true
+        return false
     }
 
     private fun resolvedVersionName(
