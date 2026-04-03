@@ -132,7 +132,7 @@ internal fun AppDetailContent(app: ManagedApp, isLoadingHistory: Boolean) {
             )
         }
 
-        if (isLoadingHistory && app.history.isEmpty()) {
+        if (isLoadingHistory) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
