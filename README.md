@@ -2,17 +2,73 @@
 
 # GitHub Updater
 
-`GitHub Updater` is a small Android app for tracking and installing upstream APK releases outside of Google Play.
+![GitHub Updater app icon](app/src/main/ic_launcher-playstore.png)
 
-Features:
-- the latest available app release
-- the installed version on the device, if present
-- a single action button to install or update
-- release history in a separate detail screen
-- download progress with reusable APK caching
-- a settings page for theme, download location, APK cleanup, and config import/export
+An Android app for tracking and installing upstream APK releases outside of Google Play.
 
-## Managing apps
+## Features
+
+- **Latest release tracking** — shows the newest available version for each configured app
+- **Installed version detection** — shows the currently installed version on the device when present
+- **Install / update flow** — keeps the main action focused on install or update, with uninstall support
+- **Version history** — opens a separate detail screen with release history and changelog viewing
+- **Download progress and APK reuse** — caches valid downloads to avoid re-downloading the same APK
+- **Settings and config management** — supports theme, download location, APK cleanup, and config import/export
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| Language | Kotlin |
+| UI | Jetpack Compose + Material 3 |
+| Architecture | MVVM + manual DI |
+| Networking | `HttpURLConnection` + GitHub REST / GraphQL |
+| Storage | SharedPreferences |
+| Async | Kotlin Coroutines + Flow |
+| Serialization | kotlinx.serialization |
+
+## Requirements
+
+- Android **10+** (API 29)
+- Target SDK **36**
+- JDK **17**
+
+## Project Structure
+
+```text
+app/src/main/java/com/davidpv/githubupdater/
+├── data/
+│   ├── local/        # SharedPreferences-backed repositories and cache
+│   ├── model/        # Domain models
+│   └── remote/       # GitHub API service models and requests
+├── di/               # Manual app container
+├── install/          # Download service, installer, install result handling
+└── ui/               # Compose screens, state, navigation, and theme
+```
+
+## Getting Started
+
+Clone the repo and open it in Android Studio. See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for architecture details, build commands, and project conventions.
+
+## Build
+
+```bash
+# Debug APK
+./gradlew :app:assembleDebug
+
+# Release APK (requires signing env vars)
+./gradlew :app:assembleRelease --build-cache
+```
+
+Debug output:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+## Usage
+
+### Managing apps
 
 Apps are configured directly inside the app. Tap the **+** button on the main screen to add a new app configuration.
 
@@ -27,7 +83,7 @@ You can **Test** a configuration before saving to verify it fetches releases and
 
 To edit or delete an existing app, open its version history and tap the **edit** icon.
 
-## Import / Export
+### Import / Export
 
 From Settings, you can import or export your app list as a JSON file. The JSON format is:
 
@@ -43,41 +99,15 @@ From Settings, you can import or export your app list as a JSON file. The JSON f
 ]
 ```
 
-## Tech stack
+## CI
 
-- Kotlin
-- Jetpack Compose
-- Material 3
-- Android Gradle Plugin 9
-- Gradle version catalog
-
-## Current behavior
-
-- Fetches release data from the GitHub releases API
-- Filters assets with the optional `apkRegex` rule, then enforces the `.apk` suffix internally
-- If `apkRegex` is omitted, any `.apk` asset is eligible
-- Applies the same internal `.apk` suffix rule to `versionRegex`
-- Downloads APKs into `Downloads/UpdateManager` by default
-- Lets you switch to a custom folder from Settings
-- Deletes installed APKs automatically by default, with a Settings toggle to keep them
-- Reuses a previously downloaded APK when it is still valid
-- Hands installation off to the Android package installer with user confirmation
-
-## Build
-
-From the project root:
-
-```bash
-./gradlew :app:assembleDebug
-```
-
-The debug APK is generated at:
-
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
+Every push that runs the release workflow builds an APK through GitHub Actions and publishes it from `.github/workflows/release-apk.yml`.
 
 ## Notes
 
-- This project currently uses a sideload installer flow and is intended for non-Play distribution.
-- `local.properties` is intentionally ignored because it contains machine-specific Android SDK paths.
+- Fetches release data from the GitHub releases API, with token-backed GraphQL batching for the main list when configured
+- Filters assets with the optional `apkRegex` rule, then enforces the `.apk` suffix internally
+- Applies the same internal `.apk` suffix rule to `versionRegex`
+- Downloads APKs into `Download/GitHubUpdater/` by default and can switch to a custom folder from Settings
+- Deletes installed APKs automatically by default, with a Settings toggle to keep them
+- Hands installation off to the Android package installer with user confirmation
