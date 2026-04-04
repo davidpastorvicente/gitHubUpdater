@@ -172,15 +172,6 @@ class AppRepository(
         )
     }
 
-    private fun matchesAssetRules(
-        asset: GitHubAssetResponse,
-        app: AppCatalogEntry,
-    ): Boolean {
-        if (!asset.name.endsWith(".apk")) return false
-        val apkRegex = app.apkRegex?.takeIf { it.isNotBlank() } ?: return true
-        return Regex(apkRegex).containsMatchIn(asset.name)
-    }
-
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {
         if (installedVersion == latestVersion) return true
         if (compareVersions(installedVersion, latestVersion) == 0) return true
@@ -191,21 +182,6 @@ class AppRepository(
             !installedVersion[latestVersion.length].isDigit()
         ) return true
         return false
-    }
-
-    private fun resolvedVersionName(
-        releaseTagName: String,
-        assetName: String,
-        app: AppCatalogEntry,
-    ): String {
-        val cleanTag = releaseTagName.removePrefix("v").removePrefix("V")
-        val versionRegex = app.versionRegex?.takeIf { it.isNotBlank() } ?: return cleanTag
-        val regex = Regex(versionRegex)
-        return regex.find(assetName)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.takeIf { it.isNotBlank() }
-            ?: cleanTag
     }
 
     private fun compareVersions(installedVersion: String, latestVersion: String): Int? {

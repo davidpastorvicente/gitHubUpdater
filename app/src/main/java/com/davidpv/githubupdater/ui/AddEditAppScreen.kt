@@ -51,6 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
+import com.davidpv.githubupdater.data.matchesAssetRules
+import com.davidpv.githubupdater.data.resolvedVersionName
 import com.davidpv.githubupdater.ui.theme.LocalStatusPalette
 import kotlinx.coroutines.launch
 
@@ -397,29 +399,16 @@ private suspend fun runTestConfig(
         val releases = fetchReleases(state.releaseOwner, state.releaseRepo)
         if (releases.isEmpty()) return TestResult.Error("No releases found for ${state.releaseOwner}/${state.releaseRepo}.")
 
-        val apkRegexPattern = state.apkRegex
-            .takeIf { it.isNotBlank() }
-            ?.let(::Regex)
-
+        val tempEntry = state.toEntry()
         var isFirstValidRelease = true
         for (release in releases) {
             if (release.draft || release.prerelease) continue
             for (asset in release.assets) {
-                if (!asset.name.endsWith(".apk")) continue
-                val matches = apkRegexPattern?.containsMatchIn(asset.name) ?: true
-                if (!matches) continue
-
-                val versionName = if (state.versionRegex.isNotBlank()) {
-                    Regex(state.versionRegex).find(asset.name)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
-                        ?: release.tagName.removePrefix("v").removePrefix("V")
-                } else {
-                    release.tagName.removePrefix("v").removePrefix("V")
-                }
-
+                if (!matchesAssetRules(asset, tempEntry)) continue
                 return TestResult.Success(
                     releaseName = release.tagName,
                     assetName = asset.name,
-                    versionName = versionName,
+                    versionName = resolvedVersionName(release.tagName, asset.name, tempEntry),
                     foundInNonLatestRelease = !isFirstValidRelease,
                 )
             }
