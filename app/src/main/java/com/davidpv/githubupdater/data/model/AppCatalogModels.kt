@@ -10,4 +10,5 @@ data class AppCatalogEntry(
     val releaseRepo: String,
     val apkRegex: String? = null,
     val versionRegex: String? = null,
+    val multiAppRepo: Boolean = false,
 )

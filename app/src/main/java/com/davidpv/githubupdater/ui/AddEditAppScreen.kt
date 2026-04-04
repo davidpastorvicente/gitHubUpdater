@@ -41,7 +41,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Switch
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
@@ -56,10 +61,11 @@ data class AddEditAppState(
     val releaseRepo: String = "",
     val apkRegex: String = "",
     val versionRegex: String = "",
+    val multiAppRepo: Boolean = false,
 )
 
 sealed interface TestResult {
-    data class Success(val releaseName: String, val assetName: String, val versionName: String) : TestResult
+    data class Success(val releaseName: String, val assetName: String, val versionName: String, val foundInNonLatestRelease: Boolean = false) : TestResult
     data class Error(val message: String) : TestResult
 }
 
@@ -83,6 +89,7 @@ fun AddEditAppScreen(
                     releaseRepo = existingEntry.releaseRepo,
                     apkRegex = existingEntry.apkRegex.orEmpty(),
                     versionRegex = existingEntry.versionRegex.orEmpty(),
+                    multiAppRepo = existingEntry.multiAppRepo,
                 )
             } else {
                 AddEditAppState()
@@ -252,6 +259,26 @@ fun AddEditAppScreen(
             }
             item {
                 Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Multi-app repo", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Search the last 10 releases for a matching APK",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.multiAppRepo,
+                        onCheckedChange = { state = state.copy(multiAppRepo = it); testResult = null },
+                    )
+                }
+            }
+            item {
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -260,10 +287,14 @@ fun AddEditAppScreen(
                             isTesting = true
                             testResult = null
                             scope.launch {
-                                testResult = runTestConfig(
+                                val result = runTestConfig(
                                     state = state,
                                     fetchReleases = onTest,
                                 )
+                                if (result is TestResult.Success && result.foundInNonLatestRelease && !state.multiAppRepo) {
+                                    state = state.copy(multiAppRepo = true)
+                                }
+                                testResult = result
                                 isTesting = false
                             }
                         },
@@ -301,6 +332,17 @@ fun AddEditAppScreen(
 }
 
 @Composable
+private fun LabelValueText(label: String, value: String) {
+    Text(
+        text = buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Medium)) { append("$label: ") }
+            append(value)
+        },
+        style = MaterialTheme.typography.bodyMedium,
+    )
+}
+
+@Composable
 private fun TestResultCard(result: TestResult) {
     when (result) {
         is TestResult.Success -> {
@@ -315,10 +357,10 @@ private fun TestResultCard(result: TestResult) {
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text("Configuration works!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text("Release: ${result.releaseName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                    Text("Matched APK: ${result.assetName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                    Text("Resolved version: ${result.versionName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text("Configuration works!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    LabelValueText("Release", result.releaseName)
+                    LabelValueText("Matched APK", result.assetName)
+                    LabelValueText("Resolved version", result.versionName)
                 }
             }
         }
@@ -359,6 +401,7 @@ private suspend fun runTestConfig(
             .takeIf { it.isNotBlank() }
             ?.let(::Regex)
 
+        var isFirstValidRelease = true
         for (release in releases) {
             if (release.draft || release.prerelease) continue
             for (asset in release.assets) {
@@ -377,8 +420,10 @@ private suspend fun runTestConfig(
                     releaseName = release.tagName,
                     assetName = asset.name,
                     versionName = versionName,
+                    foundInNonLatestRelease = !isFirstValidRelease,
                 )
             }
+            isFirstValidRelease = false
         }
         TestResult.Error("No matching APK asset found in the latest releases.\nCheck your APK regex.")
     }.getOrElse { e ->
@@ -393,4 +438,5 @@ private fun AddEditAppState.toEntry() = AppCatalogEntry(
     releaseRepo = releaseRepo.trim(),
     apkRegex = apkRegex.trim().takeIf { it.isNotBlank() },
     versionRegex = versionRegex.trim().takeIf { it.isNotBlank() },
+    multiAppRepo = multiAppRepo,
 )

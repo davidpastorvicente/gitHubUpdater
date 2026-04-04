@@ -34,7 +34,7 @@ class GitHubReleasesService {
                 app.packageName to fetchReleases(
                     owner = app.releaseOwner,
                     repo = app.releaseRepo,
-                    perPage = 1,
+                    perPage = if (app.multiAppRepo) 10 else 1,
                     forceRefresh = forceRefresh,
                     gitHubToken = null,
                 )
@@ -48,32 +48,29 @@ class GitHubReleasesService {
             append("query BatchedLatestReleases {")
             apps.forEach { app ->
                 val alias = aliasesByPackage.getValue(app.packageName)
-                append(
-                    """
-                    $alias: repository(owner: "${app.releaseOwner}", name: "${app.releaseRepo}") {
-                      latestRelease {
-                        databaseId
-                        tagName
-                        name
-                        description
-                        url
-                        publishedAt
-                        isDraft
-                        isPrerelease
-                        releaseAssets(first: 20) {
-                          nodes {
-                            id
-                            name
-                            size
-                            downloadCount
-                            downloadUrl
-                            digest
+                if (app.multiAppRepo) {
+                    append(
+                        """
+                        $alias: repository(owner: "${app.releaseOwner}", name: "${app.releaseRepo}") {
+                          releases(first: 10, orderBy: {field: CREATED_AT, direction: DESC}) {
+                            nodes {
+                              $RELEASE_FIELDS
+                            }
                           }
                         }
-                      }
-                    }
-                    """.trimIndent(),
-                )
+                        """.trimIndent(),
+                    )
+                } else {
+                    append(
+                        """
+                        $alias: repository(owner: "${app.releaseOwner}", name: "${app.releaseRepo}") {
+                          latestRelease {
+                            $RELEASE_FIELDS
+                          }
+                        }
+                        """.trimIndent(),
+                    )
+                }
             }
             append("}")
         }
@@ -82,12 +79,23 @@ class GitHubReleasesService {
         val data = response.jsonObject["data"]?.jsonObject.orEmpty()
         apps.associate { app ->
             val alias = aliasesByPackage.getValue(app.packageName)
-            val release = data[alias]
-                ?.jsonObject
-                ?.get("latestRelease")
-                ?.takeIf { it !is kotlinx.serialization.json.JsonNull }
-                ?.let { json.decodeFromString<GraphQlReleaseNode>(it.toString()) }
-            app.packageName to release?.toRestLikeResponse()?.let(::listOf).orEmpty()
+            val repoData = data[alias]?.jsonObject
+            val releases = if (app.multiAppRepo) {
+                repoData?.get("releases")
+                    ?.jsonObject
+                    ?.get("nodes")
+                    ?.let { json.decodeFromString<List<GraphQlReleaseNode>>(it.toString()) }
+                    ?.map { it.toRestLikeResponse() }
+                    .orEmpty()
+            } else {
+                repoData?.get("latestRelease")
+                    ?.takeIf { it !is kotlinx.serialization.json.JsonNull }
+                    ?.let { json.decodeFromString<GraphQlReleaseNode>(it.toString()) }
+                    ?.toRestLikeResponse()
+                    ?.let { listOf(it) }
+                    .orEmpty()
+            }
+            app.packageName to releases
         }
     }
 
@@ -205,6 +213,26 @@ class GitHubReleasesService {
         const val CACHE_TTL_MILLIS = 15 * 60 * 1000L
         val TIME_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+        const val RELEASE_FIELDS = """
+            databaseId
+            tagName
+            name
+            description
+            url
+            publishedAt
+            isDraft
+            isPrerelease
+            releaseAssets(first: 20) {
+              nodes {
+                id
+                name
+                size
+                downloadCount
+                downloadUrl
+                digest
+              }
+            }
+        """
     }
 
     private data class CacheKey(
