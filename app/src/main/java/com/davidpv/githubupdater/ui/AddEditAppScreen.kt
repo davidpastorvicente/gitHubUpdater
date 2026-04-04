@@ -4,10 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -95,7 +97,7 @@ fun AddEditAppScreen(
 
     LaunchedEffect(isTesting) {
         if (isTesting) {
-            kotlinx.coroutines.delay(400L)
+            kotlinx.coroutines.delay(750L)
             showTestSpinner = true
         } else {
             showTestSpinner = false
@@ -232,7 +234,7 @@ fun AddEditAppScreen(
                     onValueChange = { state = state.copy(apkRegex = it); testResult = null; saveError = null },
                     label = { Text("APK regex") },
                     placeholder = { Text("e.g. ^twitter-piko-v.*") },
-                    supportingText = { Text("Matches the APK filename without .apk suffix.\nLeave blank to match any APK.") },
+                    supportingText = { Text("Regex filter on the APK filename. Matches anywhere in the name.\nAdd the suffix \\.apk to match only that exact file.\nLeave blank to match any APK.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -269,6 +271,7 @@ fun AddEditAppScreen(
                     ) {
                         if (showTestSpinner) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(6.dp))
                         }
                         Text("Test")
                     }
@@ -313,9 +316,9 @@ private fun TestResultCard(result: TestResult) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text("Configuration works!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text("Release: ${result.releaseName}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Matched APK: ${result.assetName}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Resolved version: ${result.versionName}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Release: ${result.releaseName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text("Matched APK: ${result.assetName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text("Resolved version: ${result.versionName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -354,19 +357,17 @@ private suspend fun runTestConfig(
 
         val apkRegexPattern = state.apkRegex
             .takeIf { it.isNotBlank() }
-            ?.removeSuffix("$")
-            ?.plus("\\.apk$")
             ?.let(::Regex)
 
         for (release in releases) {
             if (release.draft || release.prerelease) continue
             for (asset in release.assets) {
-                val matches = apkRegexPattern?.containsMatchIn(asset.name) ?: asset.name.endsWith(".apk")
+                if (!asset.name.endsWith(".apk")) continue
+                val matches = apkRegexPattern?.containsMatchIn(asset.name) ?: true
                 if (!matches) continue
 
                 val versionName = if (state.versionRegex.isNotBlank()) {
-                    val vr = state.versionRegex.removeSuffix("$") + "\\.apk$"
-                    Regex(vr).find(asset.name)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
+                    Regex(state.versionRegex).find(asset.name)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
                         ?: release.tagName.removePrefix("v").removePrefix("V")
                 } else {
                     release.tagName.removePrefix("v").removePrefix("V")
@@ -379,7 +380,7 @@ private suspend fun runTestConfig(
                 )
             }
         }
-        TestResult.Error("No matching APK asset found in the latest releases. Check your APK regex.")
+        TestResult.Error("No matching APK asset found in the latest releases.\nCheck your APK regex.")
     }.getOrElse { e ->
         TestResult.Error(e.message ?: "Test failed.")
     }

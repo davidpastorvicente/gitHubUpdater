@@ -78,7 +78,7 @@ app/src/main/java/com/davidpv/githubupdater/
 
 ### Asset Matching
 
-`apkRegex` in catalog entries matches asset filenames. The repository appends `\\.apk$` automatically, so catalog entries must not include the `.apk` suffix.
+`apkRegex` is matched against the full asset filename (including `.apk`) using `containsMatchIn`. Only `.apk` files are considered. Leave blank to match any APK. Use `music` to match any APK containing "music"; use `manager\.apk` to match exactly `manager.apk` (excluding `manager-debug.apk`).
 
 ### API Calls
 

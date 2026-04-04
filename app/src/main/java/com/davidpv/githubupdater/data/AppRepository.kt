@@ -176,11 +176,8 @@ class AppRepository(
         asset: GitHubAssetResponse,
         app: AppCatalogEntry,
     ): Boolean {
-        val apkRegex = app.apkRegex
-            ?.takeIf { it.isNotBlank() }
-            ?.removeSuffix("$")
-            ?.plus("\\.apk$")
-            ?: return asset.name.endsWith(".apk")
+        if (!asset.name.endsWith(".apk")) return false
+        val apkRegex = app.apkRegex?.takeIf { it.isNotBlank() } ?: return true
         return Regex(apkRegex).containsMatchIn(asset.name)
     }
 
@@ -202,9 +199,7 @@ class AppRepository(
         app: AppCatalogEntry,
     ): String {
         val cleanTag = releaseTagName.removePrefix("v").removePrefix("V")
-        val versionRegex = app.versionRegex
-            ?.removeSuffix("$")?.plus("\\.apk$")
-            ?: return cleanTag
+        val versionRegex = app.versionRegex?.takeIf { it.isNotBlank() } ?: return cleanTag
         val regex = Regex(versionRegex)
         return regex.find(assetName)
             ?.groupValues
