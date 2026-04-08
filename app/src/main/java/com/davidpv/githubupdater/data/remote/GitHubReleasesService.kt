@@ -222,7 +222,7 @@ class GitHubReleasesService {
             publishedAt
             isDraft
             isPrerelease
-            releaseAssets(first: 20) {
+            releaseAssets(first: 100) {
               nodes {
                 id
                 name
