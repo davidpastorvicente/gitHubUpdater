@@ -42,6 +42,9 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
@@ -84,7 +87,6 @@ import com.davidpv.githubupdater.data.model.ReleaseAsset
 import com.davidpv.githubupdater.data.model.ReleaseItem
 import com.davidpv.githubupdater.data.model.ThemeMode
 import com.davidpv.githubupdater.ui.theme.GitHubUpdaterTheme
-import com.davidpv.githubupdater.ui.theme.LocalStatusPalette
 import java.time.Instant
 
 private const val LIST_ROUTE = "list"
@@ -345,6 +347,17 @@ private fun ExpandedMainScreen(
         }
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long,
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -362,6 +375,7 @@ private fun ExpandedMainScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 isAddingApp = true
@@ -472,6 +486,17 @@ private fun AppListScreen(
     onEditApp: (String) -> Unit,
     onAddApp: () -> Unit,
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long,
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -489,6 +514,7 @@ private fun AppListScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddApp) {
                 Icon(Icons.Rounded.Add, contentDescription = "Add app")
@@ -546,10 +572,6 @@ private fun AppListContent(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            state.errorMessage?.let { message ->
-                item { ErrorCard(message = message) }
-            }
-
             if (state.apps.isEmpty() && !state.isRefreshing) {
                 item {
                     Box(
@@ -982,21 +1004,6 @@ private fun VersionLine(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
         )
-    }
-}
-
-@Composable
-private fun ErrorCard(message: String) {
-    val palette = LocalStatusPalette.current
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = palette.warningContainer,
-            contentColor = palette.onWarningContainer,
-        ),
-    ) {
-        Box(modifier = Modifier.padding(16.dp)) {
-            Text(text = message, style = MaterialTheme.typography.bodyMedium)
-        }
     }
 }
 
