@@ -189,7 +189,7 @@ class ApkDownloadStore(
             expectedSha256 = asset.sha256,
             expectedSizeBytes = asset.sizeBytes,
             precomputedDigest = digest.digest().toHexString(),
-            sizeBytes = storedSize,
+            sizeBytes = downloadedBytes,
             action = action,
             onProgress = onProgress,
         )
