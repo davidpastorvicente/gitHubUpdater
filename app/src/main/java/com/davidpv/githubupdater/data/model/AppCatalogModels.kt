@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class AppCatalogEntry(
+    val id: Int = 0,
     val displayName: String,
     val packageName: String,
     val releaseOwner: String,

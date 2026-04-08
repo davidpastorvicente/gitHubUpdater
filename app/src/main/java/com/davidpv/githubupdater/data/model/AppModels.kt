@@ -64,6 +64,7 @@ data class InstallProgress(
 }
 
 data class ManagedApp(
+    val catalogId: Int,
     val displayName: String,
     val packageName: String,
     val installedVersionName: String?,

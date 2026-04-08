@@ -259,21 +259,22 @@ class MainViewModel(
         refresh()
     }
 
-    fun updateApp(originalPackageName: String, entry: AppCatalogEntry) {
-        val oldEntry = catalogRepository.getEntry(originalPackageName)
-        catalogRepository.updateApp(originalPackageName, entry)
+    fun updateApp(catalogId: Int, entry: AppCatalogEntry) {
+        val oldEntry = catalogRepository.getEntry(catalogId)
+        catalogRepository.updateApp(catalogId, entry)
         val repoChanged = oldEntry == null ||
             oldEntry.releaseOwner != entry.releaseOwner ||
             oldEntry.releaseRepo != entry.releaseRepo
         if (repoChanged) refresh() else refreshLocalStatus()
     }
 
-    fun deleteApp(packageName: String) {
-        catalogRepository.deleteApp(packageName)
+    fun deleteApp(catalogId: Int) {
+        val app = _uiState.value.apps.firstOrNull { it.catalogId == catalogId }
+        catalogRepository.deleteApp(catalogId)
         _uiState.update { state ->
             state.copy(
-                apps = state.apps.filter { it.packageName != packageName },
-                selectedPackageName = state.selectedPackageName?.takeIf { it != packageName },
+                apps = state.apps.filter { it.catalogId != catalogId },
+                selectedPackageName = state.selectedPackageName?.takeIf { it != app?.packageName },
             )
         }
     }
@@ -291,8 +292,8 @@ class MainViewModel(
 
     fun exportAppsJson(): String = catalogRepository.exportAppsJson()
 
-    fun catalogEntry(packageName: String): AppCatalogEntry? =
-        catalogRepository.loadSupportedApps().firstOrNull { it.packageName == packageName }
+    fun catalogEntry(catalogId: Int): AppCatalogEntry? =
+        catalogRepository.getEntry(catalogId)
 
     suspend fun testFetchReleases(owner: String, repo: String): List<GitHubReleaseResponse> =
         releasesService.fetchReleases(

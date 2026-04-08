@@ -72,6 +72,7 @@ class AppRepository(
             }
 
             ManagedApp(
+                catalogId = supportedApp.id,
                 displayName = supportedApp.displayName,
                 packageName = supportedApp.packageName,
                 installedVersionName = installedApp?.versionName,
@@ -91,7 +92,7 @@ class AppRepository(
         packageName: String,
         forceRemoteRefresh: Boolean = false,
     ): List<ReleaseItem> {
-        val app = appCatalogRepository.getEntry(packageName)
+        val app = appCatalogRepository.getEntryByPackageName(packageName)
             ?: error("App with package name '$packageName' not found.")
         val releases = if (forceRemoteRefresh) {
             releasesService.fetchReleases(

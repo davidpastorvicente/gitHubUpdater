@@ -94,7 +94,7 @@ private const val DETAIL_ROUTE = "detail/{packageName}"
 private const val DETAIL_ROUTE_PREFIX = "detail"
 private const val SETTINGS_ROUTE = "settings"
 private const val ADD_APP_ROUTE = "add_app"
-private const val EDIT_APP_ROUTE = "edit_app/{packageName}"
+private const val EDIT_APP_ROUTE = "edit_app/{catalogId}"
 private const val EDIT_APP_ROUTE_PREFIX = "edit_app"
 private const val EXPANDED_LAYOUT_MIN_WIDTH_DP = 840
 
@@ -119,10 +119,10 @@ fun MainScreen(
     onLoadHistory: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
     onAddApp: (AppCatalogEntry) -> Unit,
-    onUpdateApp: (String, AppCatalogEntry) -> Unit,
-    onDeleteApp: (String) -> Unit,
+    onUpdateApp: (Int, AppCatalogEntry) -> Unit,
+    onDeleteApp: (Int) -> Unit,
     onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
-    onGetCatalogEntry: (String) -> AppCatalogEntry?,
+    onGetCatalogEntry: (Int) -> AppCatalogEntry?,
     onImportConfig: () -> Unit,
     onExportConfig: () -> Unit,
 ) {
@@ -206,10 +206,10 @@ private fun CompactMainScreen(
     onLoadHistory: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
     onAddApp: (AppCatalogEntry) -> Unit,
-    onUpdateApp: (String, AppCatalogEntry) -> Unit,
-    onDeleteApp: (String) -> Unit,
+    onUpdateApp: (Int, AppCatalogEntry) -> Unit,
+    onDeleteApp: (Int) -> Unit,
     onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
-    onGetCatalogEntry: (String) -> AppCatalogEntry?,
+    onGetCatalogEntry: (Int) -> AppCatalogEntry?,
     onImportConfig: () -> Unit,
     onExportConfig: () -> Unit,
 ) {
@@ -235,8 +235,8 @@ private fun CompactMainScreen(
                     onLoadHistory(packageName)
                     navController.navigate("$DETAIL_ROUTE_PREFIX/$packageName")
                 },
-                onEditApp = { packageName ->
-                    navController.navigate("$EDIT_APP_ROUTE_PREFIX/$packageName")
+                onEditApp = { catalogId ->
+                    navController.navigate("$EDIT_APP_ROUTE_PREFIX/$catalogId")
                 },
                 onAddApp = { navController.navigate(ADD_APP_ROUTE) },
             )
@@ -290,18 +290,18 @@ private fun CompactMainScreen(
         }
         composable(
             route = EDIT_APP_ROUTE,
-            arguments = listOf(navArgument("packageName") { type = NavType.StringType }),
+            arguments = listOf(navArgument("catalogId") { type = NavType.IntType }),
         ) { backStackEntry ->
-            val packageName = backStackEntry.arguments?.getString("packageName") ?: return@composable
-            val existingEntry = onGetCatalogEntry(packageName) ?: return@composable
+            val catalogId = backStackEntry.arguments?.getInt("catalogId") ?: return@composable
+            val existingEntry = onGetCatalogEntry(catalogId) ?: return@composable
             AddEditAppScreen(
                 existingEntry = existingEntry,
                 onSave = { entry ->
-                    onUpdateApp(packageName, entry)
+                    onUpdateApp(catalogId, entry)
                     navController.popBackStack()
                 },
                 onDelete = {
-                    onDeleteApp(packageName)
+                    onDeleteApp(catalogId)
                     navController.popBackStack(LIST_ROUTE, inclusive = false)
                 },
                 onTest = onTestFetchReleases,
@@ -330,19 +330,19 @@ private fun ExpandedMainScreen(
     onOpenAppDetails: (String) -> Unit,
     onLoadHistory: (String) -> Unit,
     onAddApp: (AppCatalogEntry) -> Unit,
-    onUpdateApp: (String, AppCatalogEntry) -> Unit,
-    onDeleteApp: (String) -> Unit,
+    onUpdateApp: (Int, AppCatalogEntry) -> Unit,
+    onDeleteApp: (Int) -> Unit,
     onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
-    onGetCatalogEntry: (String) -> AppCatalogEntry?,
+    onGetCatalogEntry: (Int) -> AppCatalogEntry?,
     onImportConfig: () -> Unit,
     onExportConfig: () -> Unit,
 ) {
     val selectedApp = state.apps.firstOrNull { it.packageName == state.selectedPackageName }
-    var editingPackageName by remember { mutableStateOf<String?>(null) }
+    var editingCatalogId by remember { mutableStateOf<Int?>(null) }
     var isAddingApp by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.apps, state.selectedPackageName) {
-        if (state.selectedPackageName == null && !isAddingApp && editingPackageName == null) {
+        if (state.selectedPackageName == null && !isAddingApp && editingCatalogId == null) {
             state.apps.firstOrNull()?.let { onOpenAppDetails(it.packageName) }
         }
     }
@@ -379,7 +379,7 @@ private fun ExpandedMainScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 isAddingApp = true
-                editingPackageName = null
+                editingCatalogId = null
             }) {
                 Icon(Icons.Rounded.Add, contentDescription = "Add app")
             }
@@ -401,13 +401,13 @@ private fun ExpandedMainScreen(
                     onRequestUninstall = onRequestUninstall,
                      onOpenAppDetails = { packageName ->
                          isAddingApp = false
-                         editingPackageName = null
+                         editingCatalogId = null
                          onOpenAppDetails(packageName)
                          onLoadHistory(packageName)
                      },
-                    onEditApp = { packageName ->
+                    onEditApp = { catalogId ->
                         isAddingApp = false
-                        editingPackageName = packageName
+                        editingCatalogId = catalogId
                     },
                 )
             }
@@ -440,21 +440,21 @@ private fun ExpandedMainScreen(
                             onBack = { isAddingApp = false },
                         )
                     }
-                    editingPackageName != null -> {
-                        val existingEntry = onGetCatalogEntry(editingPackageName!!)
+                    editingCatalogId != null -> {
+                        val existingEntry = onGetCatalogEntry(editingCatalogId!!)
                         if (existingEntry != null) {
                             AddEditAppScreen(
                                 existingEntry = existingEntry,
                                 onSave = { entry ->
-                                    onUpdateApp(editingPackageName!!, entry)
-                                    editingPackageName = null
+                                    onUpdateApp(editingCatalogId!!, entry)
+                                    editingCatalogId = null
                                 },
                                 onDelete = {
-                                    onDeleteApp(editingPackageName!!)
-                                    editingPackageName = null
+                                    onDeleteApp(editingCatalogId!!)
+                                    editingCatalogId = null
                                 },
                                 onTest = onTestFetchReleases,
-                                onBack = { editingPackageName = null },
+                                onBack = { editingCatalogId = null },
                             )
                         }
                     }
@@ -483,7 +483,7 @@ private fun AppListScreen(
     onRequestUninstall: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
-    onEditApp: (String) -> Unit,
+    onEditApp: (Int) -> Unit,
     onAddApp: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -547,7 +547,7 @@ private fun AppListContent(
     onCancelInstall: (String) -> Unit,
     onRequestUninstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
-    onEditApp: (String) -> Unit,
+    onEditApp: (Int) -> Unit,
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
     val groupedApps = state.apps.groupBy { app -> statusLabel(app.availabilityState) }
@@ -601,7 +601,7 @@ private fun AppListContent(
                 }
                 items(
                     items = groupedApps.getValue(sectionTitle),
-                    key = { it.packageName },
+                    key = { it.catalogId },
                 ) { app ->
                     AppCard(
                         app = app,
@@ -611,7 +611,7 @@ private fun AppListContent(
                         onCancelInstall = { onCancelInstall(app.packageName) },
                         onRequestUninstall = { onRequestUninstall(app.packageName) },
                         onOpenHistory = { onOpenAppDetails(app.packageName) },
-                        onEditConfig = { onEditApp(app.packageName) },
+                        onEditConfig = { onEditApp(app.catalogId) },
                     )
                 }
             }
@@ -1086,6 +1086,7 @@ private fun previewApps(): List<ManagedApp> {
     )
     return listOf(
         ManagedApp(
+            catalogId = 1,
             displayName = "Sample app",
             packageName = "com.example.sample",
             installedVersionName = "1.3.0",

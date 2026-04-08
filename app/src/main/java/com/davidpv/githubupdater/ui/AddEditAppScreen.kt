@@ -202,7 +202,6 @@ fun AddEditAppScreen(
                     label = { Text("Package name") },
                     placeholder = { Text("e.g. com.twitter.android") },
                     singleLine = true,
-                    enabled = !isEditing,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
