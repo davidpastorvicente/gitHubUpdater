@@ -1,5 +1,6 @@
 package com.davidpv.githubupdater.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -81,28 +82,34 @@ fun AddEditAppScreen(
     onBack: () -> Unit,
 ) {
     val isEditing = existingEntry != null
-    var state by remember {
-        mutableStateOf(
-            if (existingEntry != null) {
-                AddEditAppState(
-                    displayName = existingEntry.displayName,
-                    packageName = existingEntry.packageName,
-                    releaseOwner = existingEntry.releaseOwner,
-                    releaseRepo = existingEntry.releaseRepo,
-                    apkRegex = existingEntry.apkRegex.orEmpty(),
-                    versionRegex = existingEntry.versionRegex.orEmpty(),
-                    multiAppRepo = existingEntry.multiAppRepo,
-                )
-            } else {
-                AddEditAppState()
-            }
-        )
+    val initialState = remember {
+        if (existingEntry != null) {
+            AddEditAppState(
+                displayName = existingEntry.displayName,
+                packageName = existingEntry.packageName,
+                releaseOwner = existingEntry.releaseOwner,
+                releaseRepo = existingEntry.releaseRepo,
+                apkRegex = existingEntry.apkRegex.orEmpty(),
+                versionRegex = existingEntry.versionRegex.orEmpty(),
+                multiAppRepo = existingEntry.multiAppRepo,
+            )
+        } else {
+            AddEditAppState()
+        }
     }
+    var state by remember { mutableStateOf(initialState) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
     var isTesting by remember { mutableStateOf(false) }
     var showTestSpinner by remember { mutableStateOf(false) }
     var saveError by remember { mutableStateOf<String?>(null) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    val hasChanges = state != initialState
+
+    fun handleBack() {
+        if (hasChanges) showDiscardDialog = true else onBack()
+    }
 
     LaunchedEffect(isTesting) {
         if (isTesting) {
@@ -119,6 +126,29 @@ fun AddEditAppScreen(
         state.releaseOwner.isNotBlank() &&
         state.releaseRepo.isNotBlank()
 
+    BackHandler(enabled = hasChanges) { showDiscardDialog = true }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("Discard changes?") },
+            text = { Text("You have unsaved changes. Are you sure you want to go back?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDiscardDialog = false
+                    onBack()
+                }) {
+                    Text("Discard")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -129,7 +159,7 @@ fun AddEditAppScreen(
                         tooltip = { PlainTooltip { Text("Back") } },
                         state = rememberTooltipState(),
                     ) {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = { handleBack() }) {
                             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                         }
                     }
