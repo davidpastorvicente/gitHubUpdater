@@ -42,6 +42,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -375,7 +376,11 @@ private fun ExpandedMainScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(modifier = Modifier.padding(12.dp)) { Text(data.visuals.message) }
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 isAddingApp = true
@@ -514,7 +519,11 @@ private fun AppListScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(modifier = Modifier.padding(12.dp)) { Text(data.visuals.message) }
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddApp) {
                 Icon(Icons.Rounded.Add, contentDescription = "Add app")
