@@ -126,6 +126,9 @@ fun MainScreen(
     onGetCatalogEntry: (Int) -> AppCatalogEntry?,
     onImportConfig: () -> Unit,
     onExportConfig: () -> Unit,
+    onClearApps: () -> Unit,
+    currentAppsJson: String,
+    onBulkEditApps: (String) -> String?,
 ) {
     val density = LocalDensity.current
     val containerWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
@@ -155,6 +158,9 @@ fun MainScreen(
             onGetCatalogEntry = onGetCatalogEntry,
             onImportConfig = onImportConfig,
             onExportConfig = onExportConfig,
+            onClearApps = onClearApps,
+            currentAppsJson = currentAppsJson,
+            onBulkEditApps = onBulkEditApps,
         )
     } else {
         CompactMainScreen(
@@ -182,6 +188,9 @@ fun MainScreen(
             onGetCatalogEntry = onGetCatalogEntry,
             onImportConfig = onImportConfig,
             onExportConfig = onExportConfig,
+            onClearApps = onClearApps,
+            currentAppsJson = currentAppsJson,
+            onBulkEditApps = onBulkEditApps,
         )
     }
 }
@@ -213,6 +222,9 @@ private fun CompactMainScreen(
     onGetCatalogEntry: (Int) -> AppCatalogEntry?,
     onImportConfig: () -> Unit,
     onExportConfig: () -> Unit,
+    onClearApps: () -> Unit,
+    currentAppsJson: String,
+    onBulkEditApps: (String) -> String?,
 ) {
     val navController = rememberNavController()
 
@@ -275,6 +287,9 @@ private fun CompactMainScreen(
                 onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
                 onImportConfig = onImportConfig,
                 onExportConfig = onExportConfig,
+                onClearApps = onClearApps,
+                currentAppsJson = currentAppsJson,
+                onBulkEditApps = onBulkEditApps,
             )
         }
         composable(ADD_APP_ROUTE) {
@@ -337,6 +352,9 @@ private fun ExpandedMainScreen(
     onGetCatalogEntry: (Int) -> AppCatalogEntry?,
     onImportConfig: () -> Unit,
     onExportConfig: () -> Unit,
+    onClearApps: () -> Unit,
+    currentAppsJson: String,
+    onBulkEditApps: (String) -> String?,
 ) {
     val selectedApp = state.apps.firstOrNull { it.packageName == state.selectedPackageName }
     var editingCatalogId by remember { mutableStateOf<Int?>(null) }
@@ -431,6 +449,9 @@ private fun ExpandedMainScreen(
                             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
                             onImportConfig = onImportConfig,
                             onExportConfig = onExportConfig,
+                            onClearApps = onClearApps,
+                            currentAppsJson = currentAppsJson,
+                            onBulkEditApps = onBulkEditApps,
                         )
                     }
                     isAddingApp -> {
@@ -642,6 +663,9 @@ private fun SettingsRouteScreen(
     onUseDefaultDownloadLocation: () -> Unit,
     onImportConfig: () -> Unit,
     onExportConfig: () -> Unit,
+    onClearApps: () -> Unit,
+    currentAppsJson: String,
+    onBulkEditApps: (String) -> String?,
 ) {
     Scaffold(
         topBar = {
@@ -674,6 +698,9 @@ private fun SettingsRouteScreen(
             modifier = Modifier.padding(innerPadding),
             onImportConfig = onImportConfig,
             onExportConfig = onExportConfig,
+            onClearApps = onClearApps,
+            currentAppsJson = currentAppsJson,
+            onBulkEditApps = onBulkEditApps,
         )
     }
 }
@@ -1071,6 +1098,9 @@ private fun ExpandedScreenPreview() {
             onGetCatalogEntry = { null },
             onImportConfig = {},
             onExportConfig = {},
+            onClearApps = {},
+            currentAppsJson = "[]",
+            onBulkEditApps = { null },
         )
     }
 }

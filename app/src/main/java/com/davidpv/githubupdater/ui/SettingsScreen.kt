@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,10 +40,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.davidpv.githubupdater.data.model.AppSettings
 import com.davidpv.githubupdater.data.model.ThemeMode
 
@@ -58,7 +66,42 @@ fun SettingsContent(
     modifier: Modifier = Modifier,
     onImportConfig: () -> Unit = {},
     onExportConfig: () -> Unit = {},
+    onClearApps: () -> Unit = {},
+    currentAppsJson: String = "[]",
+    onBulkEditApps: (String) -> String? = { null },
 ) {
+    var showClearDialog by remember { mutableStateOf(false) }
+    var showBulkEditor by remember { mutableStateOf(false) }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear app data?") },
+            text = { Text("This will remove all apps from your catalog. Settings will not be affected. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearDialog = false
+                    onClearApps()
+                }) {
+                    Text("Clear", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    if (showBulkEditor) {
+        BulkEditDialog(
+            initialJson = currentAppsJson,
+            onDismiss = { showBulkEditor = false },
+            onSave = onBulkEditApps,
+        )
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -165,6 +208,19 @@ fun SettingsContent(
                     }
                     OutlinedButton(onClick = onExportConfig) {
                         Text("Export")
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = { showBulkEditor = true }) {
+                        Text("Bulk edit")
+                    }
+                    OutlinedButton(
+                        onClick = { showClearDialog = true },
+                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) {
+                        Text("Clear all")
                     }
                 }
             }
@@ -344,3 +400,80 @@ private val ThemeMode.label: String
         ThemeMode.Light -> "Light"
         ThemeMode.Dark -> "Dark"
     }
+
+@Composable
+private fun BulkEditDialog(
+    initialJson: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> String?,
+) {
+    var text by remember { mutableStateOf(initialJson) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        title = { Text("Bulk edit apps") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "Edit the JSON array below and save to apply changes.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val shape = RoundedCornerShape(8.dp)
+                val borderColor = if (errorMessage != null) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.outline
+                }
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it; errorMessage = null },
+                    textStyle = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 200.dp, max = 400.dp)
+                        .border(1.dp, borderColor, shape)
+                        .padding(12.dp)
+                        .verticalScroll(rememberScrollState()),
+                )
+                errorMessage?.let { error ->
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val result = onSave(text)
+                if (result == null) {
+                    onDismiss()
+                } else {
+                    errorMessage = result
+                }
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+    )
+}

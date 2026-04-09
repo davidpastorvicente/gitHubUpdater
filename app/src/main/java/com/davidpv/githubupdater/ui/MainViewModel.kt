@@ -290,6 +290,22 @@ class MainViewModel(
         }
     }
 
+    fun clearApps() {
+        catalogRepository.clearApps()
+        _uiState.update { state ->
+            state.copy(apps = emptyList(), selectedPackageName = null)
+        }
+    }
+
+    fun bulkEditApps(json: String): String? {
+        return runCatching {
+            val entries = importJson.decodeFromString<List<AppCatalogEntry>>(json)
+            catalogRepository.importApps(entries)
+            refresh()
+            null as String?
+        }.getOrElse { it.message ?: "Invalid JSON." }
+    }
+
     fun exportAppsJson(): String = catalogRepository.exportAppsJson()
 
     fun catalogEntry(catalogId: Int): AppCatalogEntry? =

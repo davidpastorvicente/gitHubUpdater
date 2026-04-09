@@ -51,6 +51,10 @@ class AppCatalogRepository(context: Context) {
         persist(_apps.value.filter { it.id != id })
     }
 
+    fun clearApps() {
+        persist(emptyList())
+    }
+
     fun importApps(entries: List<AppCatalogEntry>) {
         validateUniquePackageNames(entries)
         var nextId = 1

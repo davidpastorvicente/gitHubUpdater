@@ -253,6 +253,9 @@ class MainActivity : ComponentActivity() {
                     onGetCatalogEntry = viewModel::catalogEntry,
                     onImportConfig = { importConfigLauncher.launch(arrayOf("application/json", "*/*")) },
                     onExportConfig = { exportConfigLauncher.launch("apps.json") },
+                    onClearApps = viewModel::clearApps,
+                    currentAppsJson = viewModel.exportAppsJson(),
+                    onBulkEditApps = viewModel::bulkEditApps,
                 )
             }
         }
