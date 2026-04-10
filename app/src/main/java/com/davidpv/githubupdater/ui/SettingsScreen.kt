@@ -148,10 +148,6 @@ fun SettingsContent(
                     checked = settings.deleteApkAfterInstall,
                     onCheckedChange = onSetDeleteApkAfterInstall,
                 )
-                VersionCompareDepthDropdown(
-                    selected = settings.versionCompareDepth,
-                    onSelected = onSetVersionCompareDepth,
-                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -182,6 +178,10 @@ fun SettingsContent(
                         }
                     }
                 }
+                VersionCompareDepthDropdown(
+                    selected = settings.versionCompareDepth,
+                    onSelected = onSetVersionCompareDepth,
+                )
             }
         }
 
@@ -414,30 +414,47 @@ private fun VersionCompareDepthDropdown(
     onSelected: (VersionCompareDepth) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = "Version comparison depth",
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        Text(
-            text = "How many version segments to compare when checking for updates",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = "Version comparison",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = "Segments to compare for updates",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = it },
         ) {
-            OutlinedTextField(
-                value = selected.label,
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            Row(
                 modifier = Modifier
-                    .widthIn(max = 250.dp)
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-            )
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline,
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = selected.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            }
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
@@ -459,8 +476,8 @@ private fun VersionCompareDepthDropdown(
 private val VersionCompareDepth.label: String
     get() = when (this) {
         VersionCompareDepth.All -> "All segments"
-        VersionCompareDepth.Patch -> "Major.Minor.Patch"
-        VersionCompareDepth.Minor -> "Major.Minor"
+        VersionCompareDepth.Patch -> "Up until patch"
+        VersionCompareDepth.Minor -> "Up until minor"
         VersionCompareDepth.Major -> "Major only"
     }
 
