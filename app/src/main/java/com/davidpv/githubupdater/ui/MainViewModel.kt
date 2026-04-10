@@ -245,7 +245,7 @@ class MainViewModel(
 
     fun setVersionCompareDepth(depth: VersionCompareDepth) {
         settingsRepository.setVersionCompareDepth(depth)
-        refresh()
+        refreshLocalStatus()
     }
 
     fun setGitHubToken(token: String) {
