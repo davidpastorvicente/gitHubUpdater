@@ -6,6 +6,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.davidpv.githubupdater.data.model.AppSettings
 import com.davidpv.githubupdater.data.model.DEFAULT_DOWNLOAD_DIRECTORY_DISPLAY_PATH
 import com.davidpv.githubupdater.data.model.ThemeMode
+import com.davidpv.githubupdater.data.model.VersionCompareDepth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,6 +67,12 @@ class AppSettingsRepository(
         }
     }
 
+    fun setVersionCompareDepth(depth: VersionCompareDepth) {
+        updateSettings(currentSettings.copy(versionCompareDepth = depth)) {
+            putString(KEY_VERSION_COMPARE_DEPTH, depth.name)
+        }
+    }
+
     fun downloadLocationSummary(settings: AppSettings = currentSettings): String {
         val treeUri = settings.customDownloadTreeUri?.let(Uri::parse) ?: return DEFAULT_DOWNLOAD_DIRECTORY_DISPLAY_PATH
         val displayName = DocumentFile.fromTreeUri(appContext, treeUri)?.name
@@ -81,6 +88,7 @@ class AppSettingsRepository(
         private const val KEY_REFRESH_ON_START = "refresh_on_start"
         private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_CUSTOM_DOWNLOAD_TREE_URI = "custom_download_tree_uri"
+        private const val KEY_VERSION_COMPARE_DEPTH = "version_compare_depth"
     }
 
     private fun loadSettings(): AppSettings {
@@ -94,6 +102,9 @@ class AppSettingsRepository(
             refreshOnStart = preferences.getBoolean(KEY_REFRESH_ON_START, true),
             gitHubToken = preferences.getString(KEY_GITHUB_TOKEN, null),
             customDownloadTreeUri = preferences.getString(KEY_CUSTOM_DOWNLOAD_TREE_URI, null),
+            versionCompareDepth = preferences.getString(KEY_VERSION_COMPARE_DEPTH, null)
+                ?.let { runCatching { VersionCompareDepth.valueOf(it) }.getOrNull() }
+                ?: VersionCompareDepth.All,
         )
     }
 

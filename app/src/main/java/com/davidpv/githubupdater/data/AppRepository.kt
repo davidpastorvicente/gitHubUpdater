@@ -11,6 +11,7 @@ import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
 import com.davidpv.githubupdater.data.model.ManagedApp
 import com.davidpv.githubupdater.data.model.ReleaseAsset
 import com.davidpv.githubupdater.data.model.ReleaseItem
+import com.davidpv.githubupdater.data.model.VersionCompareDepth
 import com.davidpv.githubupdater.data.remote.GitHubReleasesService
 import java.time.Instant
 
@@ -174,10 +175,9 @@ class AppRepository(
     }
 
     private fun isVersionCurrent(installedVersion: String, latestVersion: String): Boolean {
+        val depth = appSettingsRepository.currentSettings.versionCompareDepth
         if (installedVersion == latestVersion) return true
-        if (compareVersions(installedVersion, latestVersion) == 0) return true
-        // Handle builds where installed appends a suffix (e.g. git hash) to the release version:
-        // "4.7.2-25.20.0_b05ff8e" should be considered current against "4.7.2-25.20.0"
+        if (compareVersions(installedVersion, latestVersion, depth) == 0) return true
         if (installedVersion.startsWith(latestVersion) &&
             installedVersion.length > latestVersion.length &&
             !installedVersion[latestVersion.length].isDigit()
@@ -185,23 +185,49 @@ class AppRepository(
         return false
     }
 
-    private fun compareVersions(installedVersion: String, latestVersion: String): Int? {
-        val installedParts = versionRegex.findAll(installedVersion).map { it.value.toInt() }.toList()
-        val latestParts = versionRegex.findAll(latestVersion).map { it.value.toInt() }.toList()
-        if (installedParts.isEmpty() || latestParts.isEmpty()) return null
+    private fun compareVersions(
+        installedVersion: String,
+        latestVersion: String,
+        depth: VersionCompareDepth = appSettingsRepository.currentSettings.versionCompareDepth,
+    ): Int? {
+        val installedSegments = parseVersionSegments(installedVersion)
+        val latestSegments = parseVersionSegments(latestVersion)
+        if (installedSegments.isEmpty() || latestSegments.isEmpty()) return null
 
-        val maxSize = maxOf(installedParts.size, latestParts.size)
+        val limit = when (depth) {
+            VersionCompareDepth.Major -> 1
+            VersionCompareDepth.Minor -> 2
+            VersionCompareDepth.Patch -> 3
+            VersionCompareDepth.All -> Int.MAX_VALUE
+        }
+        val left = installedSegments.take(limit)
+        val right = latestSegments.take(limit)
+
+        val maxSize = maxOf(left.size, right.size)
         repeat(maxSize) { index ->
-            val left = installedParts.getOrElse(index) { 0 }
-            val right = latestParts.getOrElse(index) { 0 }
-            if (left != right) return left.compareTo(right)
+            val l = left.getOrElse(index) { "" }
+            val r = right.getOrElse(index) { "" }
+            val cmp = compareSegments(l, r)
+            if (cmp != 0) return cmp
         }
         return 0
     }
 
     private companion object {
         const val HISTORY_RELEASES_PER_PAGE = 10
-        val versionRegex = Regex("\\d+")
+        private val segmentSplitRegex = Regex("[.\\-]")
+
+        fun parseVersionSegments(version: String): List<String> =
+            version.split(segmentSplitRegex).filter { it.isNotEmpty() }
+
+        fun compareSegments(a: String, b: String): Int {
+            val aNum = a.toLongOrNull()
+            val bNum = b.toLongOrNull()
+            return when {
+                aNum != null && bNum != null -> aNum.compareTo(bNum)
+                else -> a.compareTo(b, ignoreCase = true)
+            }
+        }
 
         fun deduplicateErrors(errors: List<String>): String {
             val grouped = errors.groupBy { it.substringAfter(": ", it) }

@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.davidpv.githubupdater.data.model.AppSettings
 import com.davidpv.githubupdater.data.model.ThemeMode
+import com.davidpv.githubupdater.data.model.VersionCompareDepth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +61,7 @@ fun SettingsContent(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
@@ -145,6 +147,10 @@ fun SettingsContent(
                     subtitle = "Remove downloaded APK files automatically",
                     checked = settings.deleteApkAfterInstall,
                     onCheckedChange = onSetDeleteApkAfterInstall,
+                )
+                VersionCompareDepthDropdown(
+                    selected = settings.versionCompareDepth,
+                    onSelected = onSetVersionCompareDepth,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -399,6 +405,63 @@ private val ThemeMode.label: String
         ThemeMode.System -> "System"
         ThemeMode.Light -> "Light"
         ThemeMode.Dark -> "Dark"
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VersionCompareDepthDropdown(
+    selected: VersionCompareDepth,
+    onSelected: (VersionCompareDepth) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Version comparison depth",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Text(
+            text = "How many version segments to compare when checking for updates",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+        ) {
+            OutlinedTextField(
+                value = selected.label,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                modifier = Modifier
+                    .widthIn(max = 250.dp)
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                VersionCompareDepth.entries.forEach { depth ->
+                    DropdownMenuItem(
+                        text = { Text(depth.label) },
+                        onClick = {
+                            onSelected(depth)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val VersionCompareDepth.label: String
+    get() = when (this) {
+        VersionCompareDepth.All -> "All segments"
+        VersionCompareDepth.Patch -> "Major.Minor.Patch"
+        VersionCompareDepth.Minor -> "Major.Minor"
+        VersionCompareDepth.Major -> "Major only"
     }
 
 @Composable

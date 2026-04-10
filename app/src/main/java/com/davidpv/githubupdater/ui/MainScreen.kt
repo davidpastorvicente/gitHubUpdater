@@ -87,6 +87,7 @@ import com.davidpv.githubupdater.data.model.ManagedApp
 import com.davidpv.githubupdater.data.model.ReleaseAsset
 import com.davidpv.githubupdater.data.model.ReleaseItem
 import com.davidpv.githubupdater.data.model.ThemeMode
+import com.davidpv.githubupdater.data.model.VersionCompareDepth
 import com.davidpv.githubupdater.ui.theme.GitHubUpdaterTheme
 import java.time.Instant
 
@@ -113,6 +114,7 @@ fun MainScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
@@ -146,6 +148,7 @@ fun MainScreen(
             onSetDynamicColor = onSetDynamicColor,
             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
             onSetRefreshOnStart = onSetRefreshOnStart,
+            onSetVersionCompareDepth = onSetVersionCompareDepth,
             onSetGitHubToken = onSetGitHubToken,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
@@ -175,6 +178,7 @@ fun MainScreen(
             onSetDynamicColor = onSetDynamicColor,
             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
             onSetRefreshOnStart = onSetRefreshOnStart,
+            onSetVersionCompareDepth = onSetVersionCompareDepth,
             onSetGitHubToken = onSetGitHubToken,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
@@ -209,6 +213,7 @@ private fun CompactMainScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
@@ -282,6 +287,7 @@ private fun CompactMainScreen(
                 onSetDynamicColor = onSetDynamicColor,
                 onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
                 onSetRefreshOnStart = onSetRefreshOnStart,
+                onSetVersionCompareDepth = onSetVersionCompareDepth,
                 onSetGitHubToken = onSetGitHubToken,
                 onPickDownloadFolder = onPickDownloadFolder,
                 onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
@@ -340,6 +346,7 @@ private fun ExpandedMainScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
@@ -444,6 +451,7 @@ private fun ExpandedMainScreen(
                             onSetDynamicColor = onSetDynamicColor,
                             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
                             onSetRefreshOnStart = onSetRefreshOnStart,
+                            onSetVersionCompareDepth = onSetVersionCompareDepth,
                             onSetGitHubToken = onSetGitHubToken,
                             onPickDownloadFolder = onPickDownloadFolder,
                             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
@@ -658,6 +666,7 @@ private fun SettingsRouteScreen(
     onSetDynamicColor: (Boolean) -> Unit,
     onSetDeleteApkAfterInstall: (Boolean) -> Unit,
     onSetRefreshOnStart: (Boolean) -> Unit,
+    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
@@ -692,6 +701,7 @@ private fun SettingsRouteScreen(
             onSetDynamicColor = onSetDynamicColor,
             onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
             onSetRefreshOnStart = onSetRefreshOnStart,
+            onSetVersionCompareDepth = onSetVersionCompareDepth,
             onSetGitHubToken = onSetGitHubToken,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
@@ -1086,6 +1096,7 @@ private fun ExpandedScreenPreview() {
             onSetDynamicColor = {},
             onSetDeleteApkAfterInstall = {},
             onSetRefreshOnStart = {},
+            onSetVersionCompareDepth = {},
             onSetGitHubToken = {},
             onPickDownloadFolder = {},
             onUseDefaultDownloadLocation = {},

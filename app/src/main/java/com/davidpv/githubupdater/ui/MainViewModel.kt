@@ -17,6 +17,7 @@ import com.davidpv.githubupdater.data.model.InstallProgress
 import com.davidpv.githubupdater.data.model.InstallStage
 import com.davidpv.githubupdater.data.model.ManagedApp
 import com.davidpv.githubupdater.data.model.ThemeMode
+import com.davidpv.githubupdater.data.model.VersionCompareDepth
 import com.davidpv.githubupdater.data.remote.GitHubReleasesService
 import com.davidpv.githubupdater.install.DownloadService
 import com.davidpv.githubupdater.install.InstallResultEvents
@@ -240,6 +241,11 @@ class MainViewModel(
 
     fun setRefreshOnStart(enabled: Boolean) {
         settingsRepository.setRefreshOnStart(enabled)
+    }
+
+    fun setVersionCompareDepth(depth: VersionCompareDepth) {
+        settingsRepository.setVersionCompareDepth(depth)
+        refresh()
     }
 
     fun setGitHubToken(token: String) {
