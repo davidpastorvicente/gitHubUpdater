@@ -1,6 +1,7 @@
 package com.davidpv.githubupdater.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,7 +21,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,14 +49,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.Switch
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
+import com.davidpv.githubupdater.data.model.VersionRegexTarget
 import com.davidpv.githubupdater.data.matchesAssetRules
 import com.davidpv.githubupdater.data.matchesReleaseRules
 import com.davidpv.githubupdater.data.resolvedVersionName
@@ -66,7 +72,7 @@ data class AddEditAppState(
     val apkRegex: String = "",
     val releaseRegex: String = "",
     val versionRegex: String = "",
-    val multiAppRepo: Boolean = false,
+    val versionRegexTarget: VersionRegexTarget = VersionRegexTarget.Apk,
 )
 
 sealed interface TestResult {
@@ -94,7 +100,7 @@ fun AddEditAppScreen(
                 apkRegex = existingEntry.apkRegex.orEmpty(),
                 releaseRegex = existingEntry.releaseRegex.orEmpty(),
                 versionRegex = existingEntry.versionRegex.orEmpty(),
-                multiAppRepo = existingEntry.multiAppRepo,
+                versionRegexTarget = existingEntry.versionRegexTarget,
             )
         } else {
             AddEditAppState()
@@ -271,54 +277,52 @@ fun AddEditAppScreen(
             }
             item {
                 OutlinedTextField(
-                    value = state.apkRegex,
-                    onValueChange = { state = state.copy(apkRegex = it); testResult = null; saveError = null },
-                    label = { Text("APK regex") },
-                    placeholder = { Text("e.g. ^twitter-piko-v.*") },
-                    supportingText = { Text("Regex filter on the APK filename. Matches anywhere in the name.\nAdd the suffix \\.apk to match only that exact file.\nLeave blank to match any APK.") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            item {
-                OutlinedTextField(
                     value = state.releaseRegex,
                     onValueChange = { state = state.copy(releaseRegex = it); testResult = null; saveError = null },
                     label = { Text("Release regex") },
                     placeholder = { Text("e.g. youtube-music") },
-                    supportingText = { Text("Regex filter on the release title. Only releases matching this will be considered.\nLeave blank to use all releases.") },
+                    supportingText = { Text("Regex filter on the release title. Leave blank to use all releases.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             item {
                 OutlinedTextField(
-                    value = state.versionRegex,
-                    onValueChange = { state = state.copy(versionRegex = it); testResult = null; saveError = null },
-                    label = { Text("Version regex") },
-                    placeholder = { Text("e.g. -V(.+)-release") },
-                    supportingText = { Text("Extracts version via capture group 1.\nMatches APK filename (default), or release title if only Release regex is set.\nLeave blank for automatic version extraction.") },
+                    value = state.apkRegex,
+                    onValueChange = { state = state.copy(apkRegex = it); testResult = null; saveError = null },
+                    label = { Text("APK regex") },
+                    placeholder = { Text("e.g. ^twitter-piko-v.*") },
+                    supportingText = { Text("Regex filter on the APK filename. Leave blank to match any APK.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             item {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Multi-app repo", style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            "Search the last 10 releases for a matching APK",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        OutlinedTextField(
+                            value = state.versionRegex,
+                            onValueChange = { state = state.copy(versionRegex = it); testResult = null; saveError = null },
+                            label = { Text("Version regex") },
+                            placeholder = { Text("e.g. -V(.+)-release") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        VersionRegexTargetDropdown(
+                            selected = state.versionRegexTarget,
+                            onSelected = { state = state.copy(versionRegexTarget = it); testResult = null },
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
-                    Switch(
-                        checked = state.multiAppRepo,
-                        onCheckedChange = { state = state.copy(multiAppRepo = it); testResult = null },
+                    Text(
+                        text = "Extracts version via capture group 1. Leave blank for automatic extraction.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp),
                     )
                 }
             }
@@ -332,14 +336,10 @@ fun AddEditAppScreen(
                             isTesting = true
                             testResult = null
                             scope.launch {
-                                val result = runTestConfig(
+                                testResult = runTestConfig(
                                     state = state,
                                     fetchReleases = onTest,
                                 )
-                                if (result is TestResult.Success && result.foundInNonLatestRelease && !state.multiAppRepo) {
-                                    state = state.copy(multiAppRepo = true)
-                                }
-                                testResult = result
                                 isTesting = false
                             }
                         },
@@ -486,5 +486,50 @@ private fun AddEditAppState.toEntry() = AppCatalogEntry(
     apkRegex = apkRegex.trim().takeIf { it.isNotBlank() },
     releaseRegex = releaseRegex.trim().takeIf { it.isNotBlank() },
     versionRegex = versionRegex.trim().takeIf { it.isNotBlank() },
-    multiAppRepo = multiAppRepo,
+    versionRegexTarget = versionRegexTarget,
 )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VersionRegexTargetDropdown(
+    selected: VersionRegexTarget,
+    onSelected: (VersionRegexTarget) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                .padding(horizontal = 12.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(selected.label, style = MaterialTheme.typography.bodyMedium)
+            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+        }
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            VersionRegexTarget.entries.forEach { target ->
+                DropdownMenuItem(
+                    text = { Text(target.label) },
+                    onClick = { onSelected(target); expanded = false },
+                )
+            }
+        }
+    }
+}
+
+private val VersionRegexTarget.label: String
+    get() = when (this) {
+        VersionRegexTarget.Apk -> "APK"
+        VersionRegexTarget.Release -> "Release"
+    }
+

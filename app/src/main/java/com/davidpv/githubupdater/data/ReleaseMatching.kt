@@ -2,6 +2,7 @@ package com.davidpv.githubupdater.data
 
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.GitHubAssetResponse
+import com.davidpv.githubupdater.data.model.VersionRegexTarget
 
 fun matchesReleaseRules(releaseName: String, app: AppCatalogEntry): Boolean {
     val releaseRegex = app.releaseRegex?.takeIf { it.isNotBlank() } ?: return true
@@ -20,15 +21,12 @@ fun resolvedVersionName(
     assetName: String,
     app: AppCatalogEntry,
 ): String {
-    val hasReleaseRegex = !app.releaseRegex.isNullOrBlank()
-    val hasApkRegex = !app.apkRegex.isNullOrBlank()
     val versionRegex = app.versionRegex?.takeIf { it.isNotBlank() }
 
-    // Determine versionRegex target:
-    // - Both releaseRegex + apkRegex set  → match APK filename
-    // - Only releaseRegex set             → match release name
-    // - Otherwise                         → match APK filename (original behaviour)
-    val versionSource = if (hasReleaseRegex && !hasApkRegex) releaseName else assetName
+    val versionSource = when (app.versionRegexTarget) {
+        VersionRegexTarget.Release -> releaseName
+        VersionRegexTarget.Apk -> assetName
+    }
 
     if (versionRegex != null) {
         val target = if ("\\.apk" !in versionRegex) versionSource.removeSuffix(".apk") else versionSource

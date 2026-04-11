@@ -34,7 +34,7 @@ class GitHubReleasesService {
                 app.packageName to fetchReleases(
                     owner = app.releaseOwner,
                     repo = app.releaseRepo,
-                    perPage = if (app.multiAppRepo) 10 else 1,
+                    perPage = if (!app.releaseRegex.isNullOrBlank()) RELEASE_REGEX_PER_PAGE else 1,
                     forceRefresh = forceRefresh,
                     gitHubToken = null,
                 )
@@ -48,11 +48,11 @@ class GitHubReleasesService {
             append("query BatchedLatestReleases {")
             apps.forEach { app ->
                 val alias = aliasesByPackage.getValue(app.packageName)
-                if (app.multiAppRepo) {
+                if (!app.releaseRegex.isNullOrBlank()) {
                     append(
                         """
                         $alias: repository(owner: "${app.releaseOwner}", name: "${app.releaseRepo}") {
-                          releases(first: 10, orderBy: {field: CREATED_AT, direction: DESC}) {
+                          releases(first: $RELEASE_REGEX_PER_PAGE, orderBy: {field: CREATED_AT, direction: DESC}) {
                             nodes {
                               $RELEASE_FIELDS
                             }
@@ -80,7 +80,7 @@ class GitHubReleasesService {
         apps.associate { app ->
             val alias = aliasesByPackage.getValue(app.packageName)
             val repoData = data[alias]?.jsonObject
-            val releases = if (app.multiAppRepo) {
+            val releases = if (!app.releaseRegex.isNullOrBlank()) {
                 repoData?.get("releases")
                     ?.jsonObject
                     ?.get("nodes")
@@ -211,6 +211,7 @@ class GitHubReleasesService {
         const val USER_AGENT = "GitHubUpdater/0.1"
         const val GRAPHQL_ENDPOINT = "https://api.github.com/graphql"
         const val CACHE_TTL_MILLIS = 15 * 60 * 1000L
+        const val RELEASE_REGEX_PER_PAGE = 30
         val TIME_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
         const val RELEASE_FIELDS = """
