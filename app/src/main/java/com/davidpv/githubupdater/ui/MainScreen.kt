@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -588,6 +589,7 @@ private fun AppListContent(
     onEditApp: (Int) -> Unit,
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
+    val listState = rememberLazyListState()
     val groupedApps = state.apps.groupBy { app -> statusLabel(app.availabilityState) }
     val orderedSectionTitles = buildList {
         listOf("Update available", "Updated", "Not installed").forEach { title ->
@@ -599,6 +601,10 @@ private fun AppListContent(
             .forEach(::add)
     }
 
+    LaunchedEffect(state.isRefreshing) {
+        if (!state.isRefreshing) listState.animateScrollToItem(0)
+    }
+
     PullToRefreshBox(
         state = pullToRefreshState,
         isRefreshing = state.isRefreshing,
@@ -606,6 +612,7 @@ private fun AppListContent(
         modifier = Modifier.fillMaxSize(),
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
