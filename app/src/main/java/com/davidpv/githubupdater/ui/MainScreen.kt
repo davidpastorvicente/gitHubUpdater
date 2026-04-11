@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -522,6 +523,7 @@ private fun AppListScreen(
     onAddApp: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let { message ->
@@ -573,6 +575,7 @@ private fun AppListScreen(
                 onRequestUninstall = onRequestUninstall,
                 onOpenAppDetails = onOpenAppDetails,
                 onEditApp = onEditApp,
+                listState = listState,
             )
         }
     }
@@ -587,9 +590,9 @@ private fun AppListContent(
     onRequestUninstall: (String) -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onEditApp: (Int) -> Unit,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
-    val listState = rememberLazyListState()
     val groupedApps = state.apps.groupBy { app -> statusLabel(app.availabilityState) }
     val orderedSectionTitles = buildList {
         listOf("Update available", "Updated", "Not installed").forEach { title ->
@@ -601,8 +604,10 @@ private fun AppListContent(
             .forEach(::add)
     }
 
+    var wasRefreshing by remember { mutableStateOf(false) }
     LaunchedEffect(state.isRefreshing) {
-        if (!state.isRefreshing) listState.animateScrollToItem(0)
+        if (wasRefreshing && !state.isRefreshing) listState.animateScrollToItem(0)
+        wasRefreshing = state.isRefreshing
     }
 
     PullToRefreshBox(
