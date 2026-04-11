@@ -404,8 +404,8 @@ private fun TestResultCard(result: TestResult) {
                 ) {
                     Text("Configuration works!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     LabelValueText("Release", result.releaseName)
-                    LabelValueText("Matched APK", result.assetName)
-                    LabelValueText("Resolved version", result.versionName)
+                    LabelValueText("APK", result.assetName)
+                    LabelValueText("Version", result.versionName)
                 }
             }
         }
