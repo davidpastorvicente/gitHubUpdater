@@ -137,8 +137,14 @@ class AppRepository(
         return releases.asSequence()
             .filterNot { it.draft || it.prerelease }
             .mapNotNull { toReleaseItem(release = it, app = app) }
-            .sortedByDescending(ReleaseItem::publishedAt)
-            .toList()
+            // Deduplicate by versionName, keeping the most recently published entry
+            .groupBy { it.versionName }
+            .values
+            .map { dupes -> dupes.maxBy { it.publishedAt } }
+            // Sort by version descending (newest version first)
+            .sortedWith(Comparator { a, b ->
+                compareVersions(b.versionName, a.versionName) ?: b.publishedAt.compareTo(a.publishedAt)
+            })
     }
 
     private fun toReleaseItem(
