@@ -25,7 +25,7 @@ fun resolvedVersionName(
 
     val versionSource = when (app.versionRegexTarget) {
         VersionRegexTarget.Release -> releaseName
-        VersionRegexTarget.Apk -> assetName
+        VersionRegexTarget.APK -> assetName
     }
 
     if (versionRegex != null) {

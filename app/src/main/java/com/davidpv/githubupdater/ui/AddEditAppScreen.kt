@@ -72,7 +72,7 @@ data class AddEditAppState(
     val apkRegex: String = "",
     val releaseRegex: String = "",
     val versionRegex: String = "",
-    val versionRegexTarget: VersionRegexTarget = VersionRegexTarget.Apk,
+    val versionRegexTarget: VersionRegexTarget = VersionRegexTarget.APK,
 )
 
 sealed interface TestResult {
@@ -529,7 +529,7 @@ private fun VersionRegexTargetDropdown(
 
 private val VersionRegexTarget.label: String
     get() = when (this) {
-        VersionRegexTarget.Apk -> "APK"
+        VersionRegexTarget.APK -> "APK"
         VersionRegexTarget.Release -> "Release"
     }
 

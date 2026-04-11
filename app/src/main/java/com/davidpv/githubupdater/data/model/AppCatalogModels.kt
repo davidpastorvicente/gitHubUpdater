@@ -1,8 +1,12 @@
 package com.davidpv.githubupdater.data.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-enum class VersionRegexTarget { Apk, Release }
+enum class VersionRegexTarget {
+    @SerialName("apk") APK,
+    @SerialName("release") Release
+}
 
 @Serializable
 data class AppCatalogEntry(
@@ -14,5 +18,5 @@ data class AppCatalogEntry(
     val apkRegex: String? = null,
     val releaseRegex: String? = null,
     val versionRegex: String? = null,
-    val versionRegexTarget: VersionRegexTarget = VersionRegexTarget.Apk,
+    val versionRegexTarget: VersionRegexTarget = VersionRegexTarget.APK,
 )

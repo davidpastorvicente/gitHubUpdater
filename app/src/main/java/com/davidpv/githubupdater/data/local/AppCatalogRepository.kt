@@ -14,7 +14,7 @@ class AppCatalogRepository(context: Context) {
     private val preferences = context.applicationContext
         .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
-    private val prettyJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
+    private val prettyJson = Json { ignoreUnknownKeys = true; prettyPrint = true; encodeDefaults = false }
     private val _apps = MutableStateFlow(loadFromDisk())
 
     fun loadSupportedApps(): List<AppCatalogEntry> =
