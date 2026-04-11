@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
 import com.davidpv.githubupdater.data.matchesAssetRules
+import com.davidpv.githubupdater.data.matchesReleaseRules
 import com.davidpv.githubupdater.data.resolvedVersionName
 import com.davidpv.githubupdater.ui.theme.LocalStatusPalette
 import kotlinx.coroutines.launch
@@ -63,6 +64,7 @@ data class AddEditAppState(
     val releaseOwner: String = "",
     val releaseRepo: String = "",
     val apkRegex: String = "",
+    val releaseRegex: String = "",
     val versionRegex: String = "",
     val multiAppRepo: Boolean = false,
 )
@@ -90,6 +92,7 @@ fun AddEditAppScreen(
                 releaseOwner = existingEntry.releaseOwner,
                 releaseRepo = existingEntry.releaseRepo,
                 apkRegex = existingEntry.apkRegex.orEmpty(),
+                releaseRegex = existingEntry.releaseRegex.orEmpty(),
                 versionRegex = existingEntry.versionRegex.orEmpty(),
                 multiAppRepo = existingEntry.multiAppRepo,
             )
@@ -279,11 +282,22 @@ fun AddEditAppScreen(
             }
             item {
                 OutlinedTextField(
+                    value = state.releaseRegex,
+                    onValueChange = { state = state.copy(releaseRegex = it); testResult = null; saveError = null },
+                    label = { Text("Release regex") },
+                    placeholder = { Text("e.g. youtube-music") },
+                    supportingText = { Text("Regex filter on the release title. Only releases matching this will be considered.\nLeave blank to use all releases.") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            item {
+                OutlinedTextField(
                     value = state.versionRegex,
                     onValueChange = { state = state.copy(versionRegex = it); testResult = null; saveError = null },
                     label = { Text("Version regex") },
                     placeholder = { Text("e.g. -V(.+)-release") },
-                    supportingText = { Text("Extracts version from APK filename (capture group 1).\nLeave blank to use the release tag.") },
+                    supportingText = { Text("Extracts version via capture group 1.\nMatches APK filename (default), or release title if only Release regex is set.\nLeave blank for automatic version extraction.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -432,18 +446,33 @@ private suspend fun runTestConfig(
         var isFirstValidRelease = true
         for (release in releases) {
             if (release.draft || release.prerelease) continue
+            if (!matchesReleaseRules(release.name, tempEntry)) continue
             for (asset in release.assets) {
                 if (!matchesAssetRules(asset, tempEntry)) continue
                 return TestResult.Success(
-                    releaseName = release.tagName,
+                    releaseName = release.name.ifBlank { release.tagName },
                     assetName = asset.name,
-                    versionName = resolvedVersionName(release.tagName, asset.name, tempEntry),
+                    versionName = resolvedVersionName(release.tagName, release.name, asset.name, tempEntry),
+                    foundInNonLatestRelease = !isFirstValidRelease,
+                )
+            }
+            // releaseRegex-only mode: no apkRegex required, grab any APK
+            if (!tempEntry.apkRegex.isNullOrBlank()) {
+                isFirstValidRelease = false
+                continue
+            }
+            val anyApk = release.assets.firstOrNull { it.name.endsWith(".apk") }
+            if (anyApk != null) {
+                return TestResult.Success(
+                    releaseName = release.name.ifBlank { release.tagName },
+                    assetName = anyApk.name,
+                    versionName = resolvedVersionName(release.tagName, release.name, anyApk.name, tempEntry),
                     foundInNonLatestRelease = !isFirstValidRelease,
                 )
             }
             isFirstValidRelease = false
         }
-        TestResult.Error("No matching APK asset found in the latest releases.\nCheck your APK regex.")
+        TestResult.Error("No matching release/APK found.\nCheck your APK regex and Release regex.")
     }.getOrElse { e ->
         TestResult.Error(e.message ?: "Test failed.")
     }
@@ -455,6 +484,7 @@ private fun AddEditAppState.toEntry() = AppCatalogEntry(
     releaseOwner = releaseOwner.trim(),
     releaseRepo = releaseRepo.trim(),
     apkRegex = apkRegex.trim().takeIf { it.isNotBlank() },
+    releaseRegex = releaseRegex.trim().takeIf { it.isNotBlank() },
     versionRegex = versionRegex.trim().takeIf { it.isNotBlank() },
     multiAppRepo = multiAppRepo,
 )

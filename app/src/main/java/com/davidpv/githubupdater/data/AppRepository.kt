@@ -145,20 +145,29 @@ class AppRepository(
         release: GitHubReleaseResponse,
         app: AppCatalogEntry,
     ): ReleaseItem? {
+        if (!matchesReleaseRules(releaseName = release.name, app = app)) return null
+
         val asset = release.assets
             .firstOrNull { asset -> matchesAssetRules(asset = asset, app = app) }
             ?.toReleaseAsset()
+
+        // If a releaseRegex is set with no apkRegex, an APK asset is not required — the release itself is the unit.
+        val hasApkRequirement = app.releaseRegex == null || !app.apkRegex.isNullOrBlank()
+        if (hasApkRequirement && asset == null) return null
+        // If releaseRegex only (no apkRegex), still try to grab any APK for download
+        val resolvedAsset = asset ?: release.assets.firstOrNull { it.name.endsWith(".apk") }?.toReleaseAsset()
             ?: return null
 
         return ReleaseItem(
             id = release.id,
             versionName = resolvedVersionName(
                 releaseTagName = release.tagName,
-                assetName = asset.name,
+                releaseName = release.name,
+                assetName = resolvedAsset.name,
                 app = app,
             ),
             publishedAt = Instant.parse(release.publishedAt),
-            asset = asset,
+            asset = resolvedAsset,
             changelog = release.body,
         )
     }
