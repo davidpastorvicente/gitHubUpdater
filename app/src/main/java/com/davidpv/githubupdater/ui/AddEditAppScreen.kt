@@ -281,7 +281,7 @@ fun AddEditAppScreen(
                     onValueChange = { state = state.copy(releaseRegex = it); testResult = null; saveError = null },
                     label = { Text("Release regex") },
                     placeholder = { Text("e.g. youtube-music") },
-                    supportingText = { Text("Regex filter on the release title. Leave blank to use all releases.") },
+                    supportingText = { Text("Regex filter on the release tag. Leave blank to use all releases.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -403,9 +403,9 @@ private fun TestResultCard(result: TestResult) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text("Configuration works!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    LabelValueText("Release", result.releaseName)
-                    LabelValueText("APK", result.assetName)
-                    LabelValueText("Version", result.versionName)
+                    LabelValueText("Release tag", result.releaseName)
+                    LabelValueText("APK filename", result.assetName)
+                    LabelValueText("Version detected", result.versionName)
                 }
             }
         }
@@ -446,11 +446,11 @@ private suspend fun runTestConfig(
         var isFirstValidRelease = true
         for (release in releases) {
             if (release.draft || release.prerelease) continue
-            if (!matchesReleaseRules(release.name, tempEntry)) continue
+            if (!matchesReleaseRules(release.tagName, tempEntry)) continue
             for (asset in release.assets) {
                 if (!matchesAssetRules(asset, tempEntry)) continue
                 return TestResult.Success(
-                    releaseName = release.name.ifBlank { release.tagName },
+                    releaseName = release.tagName,
                     assetName = asset.name,
                     versionName = resolvedVersionName(release.tagName, release.name, asset.name, tempEntry),
                     foundInNonLatestRelease = !isFirstValidRelease,
@@ -464,7 +464,7 @@ private suspend fun runTestConfig(
             val anyApk = release.assets.firstOrNull { it.name.endsWith(".apk") }
             if (anyApk != null) {
                 return TestResult.Success(
-                    releaseName = release.name.ifBlank { release.tagName },
+                    releaseName = release.tagName,
                     assetName = anyApk.name,
                     versionName = resolvedVersionName(release.tagName, release.name, anyApk.name, tempEntry),
                     foundInNonLatestRelease = !isFirstValidRelease,

@@ -145,7 +145,7 @@ class AppRepository(
         release: GitHubReleaseResponse,
         app: AppCatalogEntry,
     ): ReleaseItem? {
-        if (!matchesReleaseRules(releaseName = release.name, app = app)) return null
+        if (!matchesReleaseRules(releaseTagName = release.tagName, app = app)) return null
 
         val asset = release.assets
             .firstOrNull { asset -> matchesAssetRules(asset = asset, app = app) }

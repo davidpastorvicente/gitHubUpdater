@@ -4,9 +4,9 @@ import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.GitHubAssetResponse
 import com.davidpv.githubupdater.data.model.VersionRegexTarget
 
-fun matchesReleaseRules(releaseName: String, app: AppCatalogEntry): Boolean {
+fun matchesReleaseRules(releaseTagName: String, app: AppCatalogEntry): Boolean {
     val releaseRegex = app.releaseRegex?.takeIf { it.isNotBlank() } ?: return true
-    return Regex(releaseRegex).containsMatchIn(releaseName)
+    return Regex(releaseRegex).containsMatchIn(releaseTagName)
 }
 
 fun matchesAssetRules(asset: GitHubAssetResponse, app: AppCatalogEntry): Boolean {
@@ -24,7 +24,7 @@ fun resolvedVersionName(
     val versionRegex = app.versionRegex?.takeIf { it.isNotBlank() }
 
     val versionSource = when (app.versionRegexTarget) {
-        VersionRegexTarget.Release -> releaseName
+        VersionRegexTarget.Release -> releaseTagName
         VersionRegexTarget.APK -> assetName
     }
 
@@ -37,10 +37,9 @@ fun resolvedVersionName(
         if (extracted != null) return extracted
     }
 
-    // Auto-extract version from release name or tag when no versionRegex is set (or it failed).
-    // Try release name first (richer label), then fall back to tag.
-    return extractVersionFromString(releaseName)
-        ?: extractVersionFromString(releaseTagName)
+    // Auto-extract version from tag name (the release ID), then fall back to display name.
+    return extractVersionFromString(releaseTagName)
+        ?: extractVersionFromString(releaseName)
         ?: releaseTagName.removePrefix("v").removePrefix("V")
 }
 
