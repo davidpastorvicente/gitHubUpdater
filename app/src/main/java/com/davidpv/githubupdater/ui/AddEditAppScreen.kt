@@ -2,6 +2,8 @@ package com.davidpv.githubupdater.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -378,13 +380,19 @@ fun AddEditAppScreen(
 
 @Composable
 private fun LabelValueText(label: String, value: String) {
-    Text(
-        text = buildAnnotatedString {
-            withStyle(SpanStyle(fontWeight = FontWeight.Medium)) { append("$label: ") }
-            append(value)
-        },
-        style = MaterialTheme.typography.bodyMedium,
-    )
+    Row {
+        Text(
+            text = "$label: ",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            softWrap = false,
+        )
+    }
 }
 
 @Composable
