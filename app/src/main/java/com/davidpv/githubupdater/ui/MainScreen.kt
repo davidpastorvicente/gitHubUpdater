@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -118,6 +118,7 @@ fun MainScreen(
     onSetRefreshOnStart: (Boolean) -> Unit,
     onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
+    onSetMirrorBaseUrl: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
@@ -152,6 +153,7 @@ fun MainScreen(
             onSetRefreshOnStart = onSetRefreshOnStart,
             onSetVersionCompareDepth = onSetVersionCompareDepth,
             onSetGitHubToken = onSetGitHubToken,
+            onSetMirrorBaseUrl = onSetMirrorBaseUrl,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
@@ -182,6 +184,7 @@ fun MainScreen(
             onSetRefreshOnStart = onSetRefreshOnStart,
             onSetVersionCompareDepth = onSetVersionCompareDepth,
             onSetGitHubToken = onSetGitHubToken,
+            onSetMirrorBaseUrl = onSetMirrorBaseUrl,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
@@ -217,6 +220,7 @@ private fun CompactMainScreen(
     onSetRefreshOnStart: (Boolean) -> Unit,
     onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
+    onSetMirrorBaseUrl: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
@@ -291,6 +295,7 @@ private fun CompactMainScreen(
                 onSetRefreshOnStart = onSetRefreshOnStart,
                 onSetVersionCompareDepth = onSetVersionCompareDepth,
                 onSetGitHubToken = onSetGitHubToken,
+            onSetMirrorBaseUrl = onSetMirrorBaseUrl,
                 onPickDownloadFolder = onPickDownloadFolder,
                 onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
                 onImportConfig = onImportConfig,
@@ -350,6 +355,7 @@ private fun ExpandedMainScreen(
     onSetRefreshOnStart: (Boolean) -> Unit,
     onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
+    onSetMirrorBaseUrl: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
@@ -455,6 +461,7 @@ private fun ExpandedMainScreen(
                             onSetRefreshOnStart = onSetRefreshOnStart,
                             onSetVersionCompareDepth = onSetVersionCompareDepth,
                             onSetGitHubToken = onSetGitHubToken,
+                            onSetMirrorBaseUrl = onSetMirrorBaseUrl,
                             onPickDownloadFolder = onPickDownloadFolder,
                             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
                             onImportConfig = onImportConfig,
@@ -680,6 +687,7 @@ private fun SettingsRouteScreen(
     onSetRefreshOnStart: (Boolean) -> Unit,
     onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
+    onSetMirrorBaseUrl: (String) -> Unit,
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     onImportConfig: () -> Unit,
@@ -715,6 +723,7 @@ private fun SettingsRouteScreen(
             onSetRefreshOnStart = onSetRefreshOnStart,
             onSetVersionCompareDepth = onSetVersionCompareDepth,
             onSetGitHubToken = onSetGitHubToken,
+            onSetMirrorBaseUrl = onSetMirrorBaseUrl,
             onPickDownloadFolder = onPickDownloadFolder,
             onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             modifier = Modifier.padding(innerPadding),
@@ -1110,6 +1119,7 @@ private fun ExpandedScreenPreview() {
             onSetRefreshOnStart = {},
             onSetVersionCompareDepth = {},
             onSetGitHubToken = {},
+            onSetMirrorBaseUrl = {},
             onPickDownloadFolder = {},
             onUseDefaultDownloadLocation = {},
             onOpenAppDetails = {},

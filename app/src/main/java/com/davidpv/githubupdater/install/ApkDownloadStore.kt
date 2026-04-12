@@ -140,8 +140,15 @@ class ApkDownloadStore(
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
     ): DownloadedApk = withContext(Dispatchers.IO) {
+        val mirrorBaseUrl = settingsRepository.currentSettings.mirrorBaseUrl
+        val resolvedUrl = if (mirrorBaseUrl != null) {
+            mirrorUrlFor(mirrorBaseUrl, asset.downloadUrl) ?: asset.downloadUrl
+        } else {
+            asset.downloadUrl
+        }
+
         val digest = MessageDigest.getInstance("SHA-256")
-        val connection = URL(asset.downloadUrl).openConnection() as HttpURLConnection
+        val connection = URL(resolvedUrl).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 20_000
         connection.readTimeout = 60_000
@@ -314,8 +321,29 @@ class ApkDownloadStore(
 
     private fun ByteArray.toHexString(): String = joinToString(separator = "") { "%02x".format(it) }
 
+    // Constructs and checks a mirror URL from a GitHub release download URL.
+    // GitHub URL format: https://github.com/{owner}/{repo}/releases/download/{tag}/{filename}
+    // Mirror URL format: {mirrorBaseUrl}/{owner}/{repo}/{tag}/{filename}
+    // Returns the mirror URL if it responds with 2xx, null otherwise.
+    private fun mirrorUrlFor(mirrorBaseUrl: String, githubDownloadUrl: String): String? {
+        val match = GITHUB_RELEASE_URL_REGEX.find(githubDownloadUrl) ?: return null
+        val (owner, repo, tag, filename) = match.destructured
+        val mirrorUrl = "$mirrorBaseUrl/$owner/$repo/$tag/$filename"
+        return runCatching {
+            val conn = URL(mirrorUrl).openConnection() as HttpURLConnection
+            conn.requestMethod = "HEAD"
+            conn.connectTimeout = 3_000
+            conn.readTimeout = 3_000
+            conn.instanceFollowRedirects = true
+            val code = conn.responseCode
+            conn.disconnect()
+            if (code in 200..299) mirrorUrl else null
+        }.getOrNull()
+    }
+
     private companion object {
         const val USER_AGENT = "GitHubUpdater/0.1"
         const val APK_MIME_TYPE = "application/vnd.android.package-archive"
+        val GITHUB_RELEASE_URL_REGEX = Regex("""github\.com/([^/]+)/([^/]+)/releases/download/([^/]+)/([^/]+)""")
     }
 }

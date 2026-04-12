@@ -3,7 +3,6 @@ package com.davidpv.githubupdater.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Delete
@@ -51,17 +52,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.davidpv.githubupdater.data.matchesAssetRules
+import com.davidpv.githubupdater.data.matchesReleaseRules
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
 import com.davidpv.githubupdater.data.model.VersionRegexTarget
-import com.davidpv.githubupdater.data.matchesAssetRules
-import com.davidpv.githubupdater.data.matchesReleaseRules
 import com.davidpv.githubupdater.data.resolvedVersionName
 import com.davidpv.githubupdater.ui.theme.LocalStatusPalette
 import kotlinx.coroutines.launch

@@ -252,6 +252,10 @@ class MainViewModel(
         settingsRepository.setGitHubToken(token)
     }
 
+    fun setMirrorBaseUrl(url: String) {
+        settingsRepository.setMirrorBaseUrl(url)
+    }
+
     fun useDefaultDownloadLocation() {
         settingsRepository.setCustomDownloadTreeUri(null)
     }

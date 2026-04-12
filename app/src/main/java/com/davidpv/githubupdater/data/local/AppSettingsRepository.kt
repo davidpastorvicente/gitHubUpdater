@@ -73,6 +73,13 @@ class AppSettingsRepository(
         }
     }
 
+    fun setMirrorBaseUrl(url: String?) {
+        val normalized = url?.trim().orEmpty().trimEnd('/').takeIf { it.isNotEmpty() }
+        updateSettings(currentSettings.copy(mirrorBaseUrl = normalized)) {
+            if (normalized == null) remove(KEY_MIRROR_BASE_URL) else putString(KEY_MIRROR_BASE_URL, normalized)
+        }
+    }
+
     fun downloadLocationSummary(settings: AppSettings = currentSettings): String {
         val treeUri = settings.customDownloadTreeUri?.let(Uri::parse) ?: return DEFAULT_DOWNLOAD_DIRECTORY_DISPLAY_PATH
         val displayName = DocumentFile.fromTreeUri(appContext, treeUri)?.name
@@ -89,6 +96,7 @@ class AppSettingsRepository(
         private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_CUSTOM_DOWNLOAD_TREE_URI = "custom_download_tree_uri"
         private const val KEY_VERSION_COMPARE_DEPTH = "version_compare_depth"
+        private const val KEY_MIRROR_BASE_URL = "mirror_base_url"
     }
 
     private fun loadSettings(): AppSettings {
@@ -105,6 +113,7 @@ class AppSettingsRepository(
             versionCompareDepth = preferences.getString(KEY_VERSION_COMPARE_DEPTH, null)
                 ?.let { runCatching { VersionCompareDepth.valueOf(it) }.getOrNull() }
                 ?: VersionCompareDepth.All,
+            mirrorBaseUrl = preferences.getString(KEY_MIRROR_BASE_URL, null),
         )
     }
 

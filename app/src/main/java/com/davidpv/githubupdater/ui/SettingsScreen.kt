@@ -63,6 +63,7 @@ fun SettingsContent(
     onSetRefreshOnStart: (Boolean) -> Unit,
     onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
     onSetGitHubToken: (String) -> Unit,
+    onSetMirrorBaseUrl: (String) -> Unit = {},
     onPickDownloadFolder: () -> Unit,
     onUseDefaultDownloadLocation: () -> Unit,
     modifier: Modifier = Modifier,
@@ -197,6 +198,15 @@ fun SettingsContent(
                     value = settings.gitHubToken.orEmpty(),
                     onValueChange = onSetGitHubToken,
                 )
+                Text(
+                    text = "Local mirror URL (e.g. http://raspberrypi:8080). When set, APKs are fetched from your local mirror over Wi-Fi first.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                MirrorBaseUrlField(
+                    value = settings.mirrorBaseUrl.orEmpty(),
+                    onValueChange = onSetMirrorBaseUrl,
+                )
             }
         }
 
@@ -279,6 +289,84 @@ private fun GitHubTokenField(
                     if (text.isEmpty()) {
                         Text(
                             text = "ghp_...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = {
+                    text = ""
+                    onValueChange("")
+                },
+                enabled = text.isNotEmpty() || value.isNotEmpty(),
+            ) {
+                Text("Reset")
+            }
+            Button(
+                onClick = {
+                    onValueChange(trimmedText)
+                    focusManager.clearFocus(force = true)
+                },
+                enabled = trimmedText != savedValue,
+            ) {
+                Text("Save")
+            }
+        }
+    }
+}
+
+@Composable
+private fun MirrorBaseUrlField(
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    var text by remember(value) { mutableStateOf(value) }
+    LaunchedEffect(value) {
+        if (value != text) text = value
+    }
+    val trimmedText = text.trim().trimEnd('/')
+    val savedValue = value.trim().trimEnd('/')
+    val shape = RoundedCornerShape(12.dp)
+    val borderColor = MaterialTheme.colorScheme.outline
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicTextField(
+            value = text,
+            onValueChange = { text = it },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .border(width = 1.dp, color = borderColor, shape = shape)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (text.isEmpty()) {
+                        Text(
+                            text = "http://raspberrypi:8080",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
