@@ -86,6 +86,10 @@ class MainViewModel(
                         clearInstallProgress(event.packageName)
                         _uiState.update { it.copy(errorMessage = event.errorMessage) }
                     }
+                    event.usingMirror != null -> {
+                        val msg = if (event.usingMirror) "Downloading from local mirror" else "Downloading from GitHub"
+                        _uiState.update { it.copy(errorMessage = msg) }
+                    }
                     event.progress != null -> updateInstallProgress(event.packageName, event.progress)
                 }
             }

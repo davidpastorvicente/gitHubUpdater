@@ -81,10 +81,15 @@ class DownloadService : Service() {
 
         val job = serviceScope.launch {
             runCatching {
-                installer.install(packageName, asset, action) { progress ->
-                    _progressEvents.tryEmit(DownloadProgressEvent(packageName, progress))
-                    updateNotification(packageName, displayName, progress)
-                }
+                installer.install(packageName, asset, action,
+                    onProgress = { progress ->
+                        _progressEvents.tryEmit(DownloadProgressEvent(packageName, progress))
+                        updateNotification(packageName, displayName, progress)
+                    },
+                    onSourceResolved = { fromMirror ->
+                        _progressEvents.tryEmit(DownloadProgressEvent(packageName, usingMirror = fromMirror))
+                    },
+                )
             }.onFailure { error ->
                 if (error !is CancellationException) {
                     _progressEvents.tryEmit(
@@ -239,6 +244,7 @@ data class DownloadProgressEvent(
     val progress: InstallProgress? = null,
     val errorMessage: String? = null,
     val cancelled: Boolean = false,
+    val usingMirror: Boolean? = null,
 )
 
 @Serializable

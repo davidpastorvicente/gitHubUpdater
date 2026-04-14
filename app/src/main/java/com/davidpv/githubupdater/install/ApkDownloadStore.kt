@@ -41,12 +41,13 @@ class ApkDownloadStore(
         asset: ReleaseAsset,
         action: AppAction = AppAction.Install,
         onProgress: (InstallProgress) -> Unit,
+        onSourceResolved: (fromMirror: Boolean) -> Unit = {},
     ): DownloadedApk = withContext(Dispatchers.IO) {
         val customTreeUri = settingsRepository.currentSettings.customDownloadTreeUri?.let(Uri::parse)
         if (customTreeUri != null) {
-            prepareInCustomFolder(customTreeUri, asset, action, onProgress)
+            prepareInCustomFolder(customTreeUri, asset, action, onProgress, onSourceResolved)
         } else {
-            prepareInPublicDownloads(asset, action, onProgress)
+            prepareInPublicDownloads(asset, action, onProgress, onSourceResolved)
         }
     }
 
@@ -54,6 +55,7 @@ class ApkDownloadStore(
         asset: ReleaseAsset,
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
+        onSourceResolved: (Boolean) -> Unit = {},
     ): DownloadedApk {
         onProgress(InstallProgress(stage = InstallStage.CheckingCache, action = action))
         val existing = findPublicDownload(asset.name)
@@ -80,7 +82,7 @@ class ApkDownloadStore(
             ?: error("Unable to create the public download file.")
 
         return try {
-            val downloadedApk = downloadToUri(asset, uri, action, onProgress)
+            val downloadedApk = downloadToUri(asset, uri, action, onProgress, onSourceResolved)
             contentResolver.update(
                 uri,
                 ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
@@ -99,6 +101,7 @@ class ApkDownloadStore(
         asset: ReleaseAsset,
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
+        onSourceResolved: (Boolean) -> Unit = {},
     ): DownloadedApk {
         val root = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("The selected download folder is unavailable.")
@@ -127,7 +130,7 @@ class ApkDownloadStore(
             ?: error("Unable to create the download file in the selected folder.")
 
         return try {
-            downloadToUri(asset, outputFile.uri, action, onProgress)
+            downloadToUri(asset, outputFile.uri, action, onProgress, onSourceResolved)
         } catch (error: Throwable) {
             outputFile.delete()
             throw error
@@ -139,13 +142,13 @@ class ApkDownloadStore(
         uri: Uri,
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
+        onSourceResolved: (fromMirror: Boolean) -> Unit = {},
     ): DownloadedApk = withContext(Dispatchers.IO) {
         val mirrorBaseUrl = settingsRepository.currentSettings.mirrorBaseUrl
-        val resolvedUrl = if (mirrorBaseUrl != null) {
-            mirrorUrlFor(mirrorBaseUrl, asset.downloadUrl) ?: asset.downloadUrl
-        } else {
-            asset.downloadUrl
-        }
+        val mirrorUrl = if (mirrorBaseUrl != null) mirrorUrlFor(mirrorBaseUrl, asset.downloadUrl) else null
+        val resolvedUrl = mirrorUrl ?: asset.downloadUrl
+        val fromMirror = mirrorUrl != null
+        onSourceResolved(fromMirror)
 
         val digest = MessageDigest.getInstance("SHA-256")
         val connection = URL(resolvedUrl).openConnection() as HttpURLConnection

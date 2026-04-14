@@ -23,9 +23,10 @@ class ReleaseInstaller(
         asset: ReleaseAsset,
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
-    ) = withContext(Dispatchers.IO) {
+        onSourceResolved: (fromMirror: Boolean) -> Unit = {},
+    ): Unit = withContext(Dispatchers.IO) {
         installMutex.withLock {
-            val downloadedApk = downloadStore.prepareApk(asset, action, onProgress)
+            val downloadedApk = downloadStore.prepareApk(asset, action, onProgress, onSourceResolved)
             installWithPackageInstaller(
                 packageName = packageName,
                 downloadedApk = downloadedApk,
