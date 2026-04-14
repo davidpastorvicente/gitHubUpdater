@@ -190,6 +190,7 @@ class MainViewModel(
 
         val action = if (app.installedVersionName == null) AppAction.Install else AppAction.Update
         rememberPendingAction(app.packageName, action)
+        _uiState.update { it.copy(errorMessage = null) }
         updateInstallProgress(app.packageName, InstallProgress(stage = InstallStage.CheckingCache, action = action))
         DownloadService.startDownload(appContext, app.packageName, app.displayName, asset, action)
     }
@@ -363,7 +364,6 @@ class MainViewModel(
         _uiState.update { state ->
             state.copy(
                 installProgressByPackageName = state.installProgressByPackageName + (packageName to progress),
-                errorMessage = null,
             )
         }
     }
