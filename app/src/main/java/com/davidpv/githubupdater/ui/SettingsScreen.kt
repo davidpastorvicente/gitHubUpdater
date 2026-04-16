@@ -110,14 +110,6 @@ fun SettingsContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        item {
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-
         // Appearance
         item {
             SettingsSection(title = "Appearance") {
