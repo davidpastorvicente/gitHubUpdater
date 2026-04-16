@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="GitHub Updater is an Android app that tracks GitHub releases, compares installed versions, and installs upstream APK updates without relying on Google Play.">
+  <title>GitHub Updater</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="GitHub Updater home">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="https://raw.githubusercontent.com/davidpastorvicente/gitHubUpdater/main/app/src/main/ic_launcher-playstore.png" alt="">
+        </span>
+        <span class="brand-copy">
+          <strong>GitHub Updater</strong>
+          <span>Track upstream APK releases with less friction</span>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#workflow">How it works</a>
+        <a href="#config">Configuration</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="header-actions">
+        <a class="button ghost" href="https://github.com/davidpastorvicente/gitHubUpdater" target="_blank" rel="noreferrer">Source</a>
+        <a class="button download-button" href="https://github.com/davidpastorvicente/gitHubUpdater/releases/latest" target="_blank" rel="noreferrer">
+          <span class="download-button-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M12 4v9"></path>
+              <path d="M8.5 10.5 12 14l3.5-3.5"></path>
+              <path d="M5 18h14"></path>
+            </svg>
+          </span>
+          <span class="download-button-label">Download APK</span>
+          <span class="download-button-meta">Latest release</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Android release tracking without the Play Store</p>
+          <h1>Keep your favorite GitHub-hosted apps current, installable, and easy to manage.</h1>
+          <p class="hero-text">
+            GitHub Updater watches release feeds, checks what is already installed on your device, and turns scattered APK downloads into one focused update workflow.
+          </p>
+          <div class="hero-actions">
+            <a class="button download-button download-button-large" href="https://github.com/davidpastorvicente/gitHubUpdater/releases/latest" target="_blank" rel="noreferrer">
+              <span class="download-button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="img">
+                  <path d="M12 4v9"></path>
+                  <path d="M8.5 10.5 12 14l3.5-3.5"></path>
+                  <path d="M5 18h14"></path>
+                </svg>
+              </span>
+              <span class="download-button-label">Get the latest APK</span>
+              <span class="download-button-meta">Direct from GitHub Releases</span>
+            </a>
+            <a class="button ghost large" href="https://github.com/davidpastorvicente/gitHubUpdater" target="_blank" rel="noreferrer">View on GitHub</a>
+          </div>
+          <ul class="hero-points" aria-label="Highlights">
+            <li>Android 10+ support</li>
+            <li>GitHub REST plus GraphQL batching</li>
+            <li>Local mirror support for faster LAN installs</li>
+          </ul>
+        </div>
+
+        <div class="hero-panel" aria-label="Main app screenshot preview">
+          <div class="panel-glow"></div>
+          <div class="hero-shot screenshot-frame placeholder">
+            <img src="assets/screenshots/main-list.png" alt="Main screen showing tracked apps and update availability" loading="eager">
+            <div class="screenshot-placeholder hero-placeholder">
+              <strong>`main-list.png`</strong>
+              <span>Add the real main screen capture here so the hero shows the actual app UI.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-strip" aria-label="Key benefits">
+        <article>
+          <strong>One app</strong>
+          <span>for tracking, downloading, and installing upstream APK releases</span>
+        </article>
+        <article>
+          <strong>User-managed catalog</strong>
+          <span>so you decide exactly which repos and package names matter</span>
+        </article>
+        <article>
+          <strong>Cached downloads</strong>
+          <span>to avoid re-fetching the same valid APK over and over</span>
+        </article>
+      </section>
+
+      <section class="feature-section" id="features">
+        <div class="section-heading">
+          <p class="eyebrow">Features</p>
+          <h2>Built for people who install Android apps directly from GitHub releases.</h2>
+          <p>
+            The app stays close to the actual release pipeline: tags, APK assets, changelogs, package names, and install state.
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-icon">01</span>
+            <h3>Release-aware tracking</h3>
+            <p>Monitor GitHub repos for the newest release, compare it to the installed version, and show when an update is ready.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">02</span>
+            <h3>Install and update flow</h3>
+            <p>Start installs and updates from one place, with download progress, installer handoff, and uninstall support built into the same flow.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">03</span>
+            <h3>Version history with changelogs</h3>
+            <p>Open a detail screen for release history, browse previous versions, and read markdown changelogs without leaving the app.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">04</span>
+            <h3>Smart APK matching</h3>
+            <p>Use optional regex rules to pick the correct APK asset and extract version names from release tags or filenames.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">05</span>
+            <h3>Config import and export</h3>
+            <p>Back up your app catalog as JSON, import it on another device, or bulk edit your managed app list when you need to move quickly.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">06</span>
+            <h3>Android-first settings</h3>
+            <p>Choose theme mode, dynamic colors, download location, APK cleanup behavior, refresh-on-start, version comparison depth, and more.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="workflow-section" id="workflow">
+        <div class="section-heading narrow">
+          <p class="eyebrow">How it works</p>
+          <h2>From release feed to installed update, the app keeps the path short.</h2>
+        </div>
+        <div class="timeline">
+          <article>
+            <span>1</span>
+            <h3>Add an app definition</h3>
+            <p>Store the display name, package name, GitHub owner/repo, and any optional APK or version regex needed for matching.</p>
+          </article>
+          <article>
+            <span>2</span>
+            <h3>Refresh local or remote state</h3>
+            <p>Use cached remote data for a fast local status check or force a fresh refresh when you want the latest upstream release data.</p>
+          </article>
+          <article>
+            <span>3</span>
+            <h3>Download from the best source</h3>
+            <p>Fetch directly from GitHub or from a local mirror on your network, while reusing valid APKs already cached on the device.</p>
+          </article>
+          <article>
+            <span>4</span>
+            <h3>Hand off to Android installer</h3>
+            <p>The app downloads the APK, launches the platform installer, and keeps progress and result handling connected to the update state.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="config-section" id="config">
+        <div class="config-copy">
+          <p class="eyebrow">Configuration</p>
+          <h2>Flexible enough for power users, still simple enough for daily updates.</h2>
+          <p>
+            GitHub Updater is deliberately user-managed. There is no hidden remote catalog, no Play Store dependency, and no assumption that every project ships assets the same way.
+          </p>
+          <div class="check-list">
+            <div>
+              <strong>Optional GitHub token</strong>
+              <p>Unlock authenticated requests and GraphQL batching for the main list.</p>
+            </div>
+            <div>
+              <strong>Local mirror base URL</strong>
+              <p>Prefer APK downloads from a Raspberry Pi or other LAN mirror before falling back to GitHub.</p>
+            </div>
+            <div>
+              <strong>Custom download folder</strong>
+              <p>Use the default `Download/GitHubUpdater/` location or point downloads somewhere else.</p>
+            </div>
+          </div>
+        </div>
+
+        <aside class="config-panel">
+          <div class="terminal-card">
+            <div class="terminal-top">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <pre><code>[
+  {
+    "displayName": "Twitter",
+    "packageName": "com.twitter.android",
+    "releaseOwner": "crimera",
+    "releaseRepo": "twitter-apk",
+    "apkRegex": "^twitter-piko-v.*"
+  }
+]</code></pre>
+            <p class="terminal-note">Import and export use plain JSON so your catalog stays portable.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="screenshots-section" id="screenshots">
+        <div class="section-heading narrow">
+          <p class="eyebrow">Screenshots</p>
+          <h2>Real app screenshots belong here.</h2>
+          <p>
+            The gallery is wired for real device captures. Drop your screenshots into `docs/assets/screenshots/` using the filenames below and GitHub Pages will publish them automatically.
+          </p>
+        </div>
+        <div class="screenshot-grid">
+          <article class="screenshot-card">
+            <div class="screenshot-frame placeholder">
+              <img src="assets/screenshots/main-list.png" alt="Main app list showing tracked apps and update status" loading="lazy">
+              <div class="screenshot-placeholder">
+                <strong>`main-list.png`</strong>
+                <span>Main list with update states and primary actions</span>
+              </div>
+            </div>
+          </article>
+          <article class="screenshot-card">
+            <div class="screenshot-frame placeholder">
+              <img src="assets/screenshots/version-history.png" alt="Version history screen showing releases and changelog access" loading="lazy">
+              <div class="screenshot-placeholder">
+                <strong>`version-history.png`</strong>
+                <span>Release history with changelog viewing</span>
+              </div>
+            </div>
+          </article>
+          <article class="screenshot-card">
+            <div class="screenshot-frame placeholder">
+              <img src="assets/screenshots/settings.png" alt="Settings screen showing theme, downloads, and GitHub configuration" loading="lazy">
+              <div class="screenshot-placeholder">
+                <strong>`settings.png`</strong>
+                <span>Settings, import/export, token, and mirror options</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="audience-section">
+        <div class="section-heading narrow">
+          <p class="eyebrow">Why this app exists</p>
+          <h2>Useful when GitHub is the release channel and manual APK management starts getting tedious.</h2>
+        </div>
+        <div class="audience-grid">
+          <article>
+            <h3>Privacy-conscious users</h3>
+            <p>Follow upstream releases from developers who publish outside traditional app stores.</p>
+          </article>
+          <article>
+            <h3>ROM and sideloading enthusiasts</h3>
+            <p>Keep a curated set of apps current without checking each repository manually.</p>
+          </article>
+          <article>
+            <h3>Small household mirrors</h3>
+            <p>Point devices at a local mirror and reduce repeated downloads across your network.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="faq-section" id="faq">
+        <div class="section-heading narrow">
+          <p class="eyebrow">FAQ</p>
+          <h2>Common questions</h2>
+        </div>
+        <div class="faq-list">
+          <article class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>Does it replace the Android package installer?</span>
+              <span class="faq-icon" aria-hidden="true"></span>
+            </button>
+            <div class="faq-answer" hidden>
+              <div class="faq-answer-inner">
+                <p>No. It manages discovery and download, then hands installation off to the standard Android installer with user confirmation.</p>
+              </div>
+            </div>
+          </article>
+          <article class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>Can it work without hitting GitHub every time?</span>
+              <span class="faq-icon" aria-hidden="true"></span>
+            </button>
+            <div class="faq-answer" hidden>
+              <div class="faq-answer-inner">
+                <p>Yes. It supports a cached local-status refresh path, and it can also download APKs from a configured local mirror.</p>
+              </div>
+            </div>
+          </article>
+          <article class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>Can I share my app list between devices?</span>
+              <span class="faq-icon" aria-hidden="true"></span>
+            </button>
+            <div class="faq-answer" hidden>
+              <div class="faq-answer-inner">
+                <p>Yes. The managed catalog can be exported and imported as JSON, and internal IDs are reassigned automatically on import.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="cta-section">
+        <div>
+          <p class="eyebrow">Get started</p>
+          <h2>Install the APK, add the repos you care about, and let update checks stop being a chore.</h2>
+        </div>
+        <div class="cta-actions">
+          <a class="button download-button download-button-large" href="https://github.com/davidpastorvicente/gitHubUpdater/releases/latest" target="_blank" rel="noreferrer">
+            <span class="download-button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img">
+                <path d="M12 4v9"></path>
+                <path d="M8.5 10.5 12 14l3.5-3.5"></path>
+                <path d="M5 18h14"></path>
+              </svg>
+            </span>
+            <span class="download-button-label">Download latest release</span>
+            <span class="download-button-meta">Signed APK build</span>
+          </a>
+          <a class="button ghost large" href="https://github.com/davidpastorvicente/gitHubUpdater#readme" target="_blank" rel="noreferrer">Read setup docs</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>GitHub Updater is an open source Android project for tracking and installing upstream APK releases.</p>
+      <div>
+        <a href="https://github.com/davidpastorvicente/gitHubUpdater" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/davidpastorvicente/gitHubUpdater/releases/latest" target="_blank" rel="noreferrer">Releases</a>
+      </div>
+    </footer>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

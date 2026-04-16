@@ -4,6 +4,12 @@
 
 An Android app for tracking and installing upstream APK releases outside of Google Play.
 
+## Website
+
+A standalone project website is available in [`docs/index.html`](docs/index.html). It is a static landing page designed for easy local preview or GitHub Pages publishing.
+
+GitHub Pages deployment is configured via [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) and publishes the contents of `docs/` on pushes to `main`.
+
 ## Features
 
 - **Latest release tracking** — shows the newest available version for each configured app
@@ -46,7 +52,7 @@ app/src/main/java/com/davidpv/githubupdater/
 
 ## Getting Started
 
-Clone the repo and open it in Android Studio. See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for architecture details, build commands, and project conventions.
+Clone the repo and open it in Android Studio. See [`AGENTS.md`](AGENTS.md) for architecture details, build commands, and project conventions.
 
 ## Build
 
