@@ -1,5 +1,6 @@
 package com.davidpv.githubupdater.data.remote
 
+import android.util.Log
 import com.davidpv.githubupdater.data.model.AppCatalogEntry
 import com.davidpv.githubupdater.data.model.GitHubAssetResponse
 import com.davidpv.githubupdater.data.model.GitHubReleaseResponse
@@ -128,6 +129,7 @@ class GitHubReleasesService {
         val responseCode = connection.responseCode
         val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
         val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        Log.d(TAG, "REST releases $owner/$repo returned HTTP $responseCode with ${body.length} bytes.")
         check(responseCode in 200..299) {
             formatErrorMessage(responseCode = responseCode, body = body, connection = connection)
         }
@@ -158,6 +160,7 @@ class GitHubReleasesService {
         val responseCode = connection.responseCode
         val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
         val responseBody = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        Log.d(TAG, "GraphQL release batch returned HTTP $responseCode with ${responseBody.length} bytes.")
         check(responseCode in 200..299) {
             formatErrorMessage(responseCode = responseCode, body = responseBody, connection = connection)
         }
@@ -209,6 +212,7 @@ class GitHubReleasesService {
 
     private companion object {
         const val USER_AGENT = "GitHubUpdater/0.1"
+        const val TAG = "GitHubReleases"
         const val GRAPHQL_ENDPOINT = "https://api.github.com/graphql"
         const val CACHE_TTL_MILLIS = 15 * 60 * 1000L
         const val RELEASE_REGEX_PER_PAGE = 30
@@ -230,6 +234,7 @@ class GitHubReleasesService {
                 size
                 downloadCount
                 downloadUrl
+                url
                 digest
               }
             }
@@ -273,6 +278,7 @@ class GitHubReleasesService {
                 assets = releaseAssets.nodes.map { asset ->
                     GitHubAssetResponse(
                         id = asset.id.hashCode().toLong(),
+                        url = asset.url,
                         name = asset.name,
                         size = asset.size,
                         digest = asset.digest,
@@ -295,6 +301,7 @@ class GitHubReleasesService {
         val name: String,
         val size: Long,
         val downloadCount: Int = 0,
+        val url: String,
         val downloadUrl: String,
         val digest: String? = null,
     )

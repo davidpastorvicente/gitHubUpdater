@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.davidpv.githubupdater.data.local.AppSettingsRepository
 import com.davidpv.githubupdater.data.model.AppAction
@@ -142,18 +143,31 @@ class ApkDownloadStore(
     ): DownloadedApk = withContext(Dispatchers.IO) {
         val digest = MessageDigest.getInstance("SHA-256")
         val connection = URL(asset.downloadUrl).openConnection() as HttpURLConnection
+        val isGitHubApiAsset = connection.url.host == "api.github.com"
         connection.requestMethod = "GET"
         connection.connectTimeout = 20_000
         connection.readTimeout = 60_000
         connection.instanceFollowRedirects = true
         connection.setRequestProperty("Accept", "application/octet-stream")
         connection.setRequestProperty("User-Agent", USER_AGENT)
-        // Private GitHub release assets intentionally return 404 unless authenticated.
-        settingsRepository.currentSettings.gitHubToken
-            ?.takeIf { it.isNotBlank() }
-            ?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+        if (isGitHubApiAsset) {
+            // Private GitHub release assets intentionally return 404 unless authenticated.
+            settingsRepository.currentSettings.gitHubToken
+                ?.takeIf { it.isNotBlank() }
+                ?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+        }
 
-        val responseCode = connection.responseCode
+        val responseCode = try {
+            connection.responseCode
+        } catch (error: Throwable) {
+            Log.e(TAG, "APK download failed before response: asset=${asset.id}, source=${sourceLabel(isGitHubApiAsset)}", error)
+            throw error
+        }
+        Log.d(
+            TAG,
+            "APK download response: asset=${asset.id}, source=${sourceLabel(isGitHubApiAsset)}, " +
+                "authenticated=${isGitHubApiAsset && !settingsRepository.currentSettings.gitHubToken.isNullOrBlank()}, HTTP $responseCode.",
+        )
         check(responseCode in 200..299) { "Download failed with HTTP $responseCode." }
 
         val totalBytes = connection.contentLengthLong.takeIf { it > 0L } ?: asset.sizeBytes.takeIf { it > 0L }
@@ -182,7 +196,10 @@ class ApkDownloadStore(
                     }
                 }
             }
-        } catch (error: CancellationException) {
+        } catch (error: Throwable) {
+            if (error !is CancellationException) {
+                Log.e(TAG, "APK download failed while reading: asset=${asset.id}, source=${sourceLabel(isGitHubApiAsset)}", error)
+            }
             throw error
         } finally {
             connection.disconnect()
@@ -322,5 +339,9 @@ class ApkDownloadStore(
     private companion object {
         const val USER_AGENT = "GitHubUpdater/0.1"
         const val APK_MIME_TYPE = "application/vnd.android.package-archive"
+        const val TAG = "ApkDownloadStore"
+
+        fun sourceLabel(isGitHubApiAsset: Boolean): String =
+            if (isGitHubApiAsset) "GitHub asset API" else "signed/public asset URL"
     }
 }

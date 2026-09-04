@@ -22,6 +22,7 @@ data class GitHubReleaseResponse(
 @Serializable
 data class GitHubAssetResponse(
     val id: Long,
+    val url: String? = null,
     val name: String,
     val size: Long,
     val digest: String? = null,
