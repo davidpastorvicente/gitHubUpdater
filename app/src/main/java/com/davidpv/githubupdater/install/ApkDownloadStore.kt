@@ -146,6 +146,7 @@ class ApkDownloadStore(
         connection.connectTimeout = 20_000
         connection.readTimeout = 60_000
         connection.instanceFollowRedirects = true
+        connection.setRequestProperty("Accept", "application/octet-stream")
         connection.setRequestProperty("User-Agent", USER_AGENT)
         // Private GitHub release assets intentionally return 404 unless authenticated.
         settingsRepository.currentSettings.gitHubToken
