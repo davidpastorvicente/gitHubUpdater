@@ -86,9 +86,6 @@ class DownloadService : Service() {
                         _progressEvents.tryEmit(DownloadProgressEvent(packageName, progress))
                         updateNotification(packageName, displayName, progress)
                     },
-                    onSourceResolved = { fromMirror ->
-                        _progressEvents.tryEmit(DownloadProgressEvent(packageName, usingMirror = fromMirror))
-                    },
                 )
             }.onFailure { error ->
                 if (error !is CancellationException) {
@@ -244,7 +241,6 @@ data class DownloadProgressEvent(
     val progress: InstallProgress? = null,
     val errorMessage: String? = null,
     val cancelled: Boolean = false,
-    val usingMirror: Boolean? = null,
 )
 
 @Serializable

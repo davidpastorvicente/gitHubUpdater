@@ -242,7 +242,6 @@ class MainActivity : ComponentActivity() {
                     onSetRefreshOnStart = viewModel::setRefreshOnStart,
                     onSetVersionCompareDepth = viewModel::setVersionCompareDepth,
                     onSetGitHubToken = viewModel::setGitHubToken,
-                    onSetMirrorBaseUrl = viewModel::setMirrorBaseUrl,
                     onPickDownloadFolder = { pickDownloadFolderLauncher.launch(null) },
                     onUseDefaultDownloadLocation = viewModel::useDefaultDownloadLocation,
                     onOpenAppDetails = viewModel::openAppDetails,

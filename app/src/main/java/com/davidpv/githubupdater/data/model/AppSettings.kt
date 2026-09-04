@@ -23,7 +23,6 @@ data class AppSettings(
     val gitHubToken: String? = null,
     val customDownloadTreeUri: String? = null,
     val versionCompareDepth: VersionCompareDepth = VersionCompareDepth.All,
-    val mirrorBaseUrl: String? = null,
 ) {
     val usesDefaultDownloadDirectory: Boolean
         get() = customDownloadTreeUri == null

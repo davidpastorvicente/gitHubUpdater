@@ -86,10 +86,6 @@ class MainViewModel(
                         clearInstallProgress(event.packageName)
                         _uiState.update { it.copy(errorMessage = event.errorMessage) }
                     }
-                    event.usingMirror != null -> {
-                        val msg = if (event.usingMirror) "Downloading from local mirror" else "Downloading from GitHub"
-                        _uiState.update { it.copy(errorMessage = msg) }
-                    }
                     event.progress != null -> {
                         if (_uiState.value.installProgressByPackageName.containsKey(event.packageName)) {
                             updateInstallProgress(event.packageName, event.progress)
@@ -259,10 +255,6 @@ class MainViewModel(
 
     fun setGitHubToken(token: String) {
         settingsRepository.setGitHubToken(token)
-    }
-
-    fun setMirrorBaseUrl(url: String) {
-        settingsRepository.setMirrorBaseUrl(url)
     }
 
     fun useDefaultDownloadLocation() {

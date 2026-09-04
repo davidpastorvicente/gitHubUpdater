@@ -54,10 +54,4 @@
 
 ## UI Gotchas
 - Changelog rendering uses `compose-richtext` markdown in `VersionHistoryScreen`, not a WebView.
-- `MainViewModel` currently reuses `errorMessage` for both real errors and transient download-source messages (`Downloading from local mirror` / `Downloading from GitHub`).
 - Download notifications use `DownloadService.CHANNEL_ID` (`download_progress`), and the channel is created in `MainActivity.onCreate()`.
-- The manifest enables `android:usesCleartextTraffic="true"` because the local mirror feature supports plain `http://` LAN endpoints.
-
-## Pi Mirror
-- Local mirror support lives under `pi-mirror/`.
-- Mirror URL format must stay `{mirrorBaseUrl}/{owner}/{repo}/{tagName}/{filename}` to match both the app downloader and `pi-mirror/README.md`.

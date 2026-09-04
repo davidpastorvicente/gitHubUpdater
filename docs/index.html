@@ -69,7 +69,7 @@
           <ul class="hero-points" aria-label="Highlights">
             <li>Android 10+ support</li>
             <li>GitHub REST plus GraphQL batching</li>
-            <li>Local mirror support for faster LAN installs</li>
+            <li>Authenticated private-release downloads</li>
           </ul>
         </div>
 
@@ -161,8 +161,8 @@
           </article>
           <article>
             <span>3</span>
-            <h3>Download from the best source</h3>
-            <p>Fetch directly from GitHub or from a local mirror on your network, while reusing valid APKs already cached on the device.</p>
+            <h3>Download from GitHub</h3>
+            <p>Fetch release APKs from GitHub while reusing valid APKs already cached on the device.</p>
           </article>
           <article>
             <span>4</span>
@@ -183,10 +183,6 @@
             <div>
               <strong>Optional GitHub token</strong>
               <p>Unlock authenticated requests and GraphQL batching for the main list.</p>
-            </div>
-            <div>
-              <strong>Local mirror base URL</strong>
-              <p>Prefer APK downloads from a Raspberry Pi or other LAN mirror before falling back to GitHub.</p>
             </div>
             <div>
               <strong>Custom download folder</strong>
@@ -248,7 +244,7 @@
               <img src="assets/screenshots/settings.png" alt="Settings screen showing theme, downloads, and GitHub configuration" loading="lazy">
               <div class="screenshot-placeholder">
                 <strong>`settings.png`</strong>
-                <span>Settings, import/export, token, and mirror options</span>
+                <span>Settings, import/export, and token options</span>
               </div>
             </div>
           </article>
@@ -268,10 +264,6 @@
           <article>
             <h3>ROM and sideloading enthusiasts</h3>
             <p>Keep a curated set of apps current without checking each repository manually.</p>
-          </article>
-          <article>
-            <h3>Small household mirrors</h3>
-            <p>Point devices at a local mirror and reduce repeated downloads across your network.</p>
           </article>
         </div>
       </section>
@@ -300,7 +292,7 @@
             </button>
             <div class="faq-answer" hidden>
               <div class="faq-answer-inner">
-                <p>Yes. It supports a cached local-status refresh path, and it can also download APKs from a configured local mirror.</p>
+                <p>Yes. It supports a cached local-status refresh path, so installed app status can be checked without a new GitHub request.</p>
               </div>
             </div>
           </article>

@@ -41,13 +41,12 @@ class ApkDownloadStore(
         asset: ReleaseAsset,
         action: AppAction = AppAction.Install,
         onProgress: (InstallProgress) -> Unit,
-        onSourceResolved: (fromMirror: Boolean) -> Unit = {},
     ): DownloadedApk = withContext(Dispatchers.IO) {
         val customTreeUri = settingsRepository.currentSettings.customDownloadTreeUri?.let(Uri::parse)
         if (customTreeUri != null) {
-            prepareInCustomFolder(customTreeUri, asset, action, onProgress, onSourceResolved)
+            prepareInCustomFolder(customTreeUri, asset, action, onProgress)
         } else {
-            prepareInPublicDownloads(asset, action, onProgress, onSourceResolved)
+            prepareInPublicDownloads(asset, action, onProgress)
         }
     }
 
@@ -55,7 +54,6 @@ class ApkDownloadStore(
         asset: ReleaseAsset,
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
-        onSourceResolved: (Boolean) -> Unit = {},
     ): DownloadedApk {
         onProgress(InstallProgress(stage = InstallStage.CheckingCache, action = action))
         val existing = findPublicDownload(asset.name)
@@ -82,7 +80,7 @@ class ApkDownloadStore(
             ?: error("Unable to create the public download file.")
 
         return try {
-            val downloadedApk = downloadToUri(asset, uri, action, onProgress, onSourceResolved)
+            val downloadedApk = downloadToUri(asset, uri, action, onProgress)
             contentResolver.update(
                 uri,
                 ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
@@ -101,7 +99,6 @@ class ApkDownloadStore(
         asset: ReleaseAsset,
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
-        onSourceResolved: (Boolean) -> Unit = {},
     ): DownloadedApk {
         val root = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("The selected download folder is unavailable.")
@@ -130,7 +127,7 @@ class ApkDownloadStore(
             ?: error("Unable to create the download file in the selected folder.")
 
         return try {
-            downloadToUri(asset, outputFile.uri, action, onProgress, onSourceResolved)
+            downloadToUri(asset, outputFile.uri, action, onProgress)
         } catch (error: Throwable) {
             outputFile.delete()
             throw error
@@ -142,21 +139,18 @@ class ApkDownloadStore(
         uri: Uri,
         action: AppAction,
         onProgress: (InstallProgress) -> Unit,
-        onSourceResolved: (fromMirror: Boolean) -> Unit = {},
     ): DownloadedApk = withContext(Dispatchers.IO) {
-        val mirrorBaseUrl = settingsRepository.currentSettings.mirrorBaseUrl
-        val mirrorUrl = if (mirrorBaseUrl != null) mirrorUrlFor(mirrorBaseUrl, asset.downloadUrl) else null
-        val resolvedUrl = mirrorUrl ?: asset.downloadUrl
-        val fromMirror = mirrorUrl != null
-        onSourceResolved(fromMirror)
-
         val digest = MessageDigest.getInstance("SHA-256")
-        val connection = URL(resolvedUrl).openConnection() as HttpURLConnection
+        val connection = URL(asset.downloadUrl).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 20_000
         connection.readTimeout = 60_000
         connection.instanceFollowRedirects = true
         connection.setRequestProperty("User-Agent", USER_AGENT)
+        // Private GitHub release assets intentionally return 404 unless authenticated.
+        settingsRepository.currentSettings.gitHubToken
+            ?.takeIf { it.isNotBlank() }
+            ?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
 
         val responseCode = connection.responseCode
         check(responseCode in 200..299) { "Download failed with HTTP $responseCode." }
@@ -324,29 +318,8 @@ class ApkDownloadStore(
 
     private fun ByteArray.toHexString(): String = joinToString(separator = "") { "%02x".format(it) }
 
-    // Constructs and checks a mirror URL from a GitHub release download URL.
-    // GitHub URL format: https://github.com/{owner}/{repo}/releases/download/{tag}/{filename}
-    // Mirror URL format: {mirrorBaseUrl}/{owner}/{repo}/{tag}/{filename}
-    // Returns the mirror URL if it responds with 2xx, null otherwise.
-    private fun mirrorUrlFor(mirrorBaseUrl: String, githubDownloadUrl: String): String? {
-        val match = GITHUB_RELEASE_URL_REGEX.find(githubDownloadUrl) ?: return null
-        val (owner, repo, tag, filename) = match.destructured
-        val mirrorUrl = "$mirrorBaseUrl/$owner/$repo/$tag/$filename"
-        return runCatching {
-            val conn = URL(mirrorUrl).openConnection() as HttpURLConnection
-            conn.requestMethod = "HEAD"
-            conn.connectTimeout = 3_000
-            conn.readTimeout = 3_000
-            conn.instanceFollowRedirects = true
-            val code = conn.responseCode
-            conn.disconnect()
-            if (code in 200..299) mirrorUrl else null
-        }.getOrNull()
-    }
-
     private companion object {
         const val USER_AGENT = "GitHubUpdater/0.1"
         const val APK_MIME_TYPE = "application/vnd.android.package-archive"
-        val GITHUB_RELEASE_URL_REGEX = Regex("""github\.com/([^/]+)/([^/]+)/releases/download/([^/]+)/([^/]+)""")
     }
 }
