@@ -58,6 +58,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -138,100 +139,106 @@ fun MainScreen(
     val containerWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     val isExpandedLayout = containerWidthDp >= EXPANDED_LAYOUT_MIN_WIDTH_DP.dp
 
+    val settingsActions = SettingsActions(
+        onSetThemeMode = onSetThemeMode,
+        onSetDynamicColor = onSetDynamicColor,
+        onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
+        onSetRefreshOnStart = onSetRefreshOnStart,
+        onSetVersionCompareDepth = onSetVersionCompareDepth,
+        onSetGitHubToken = onSetGitHubToken,
+        onPickDownloadFolder = onPickDownloadFolder,
+        onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
+        onImportConfig = onImportConfig,
+        onExportConfig = onExportConfig,
+        onClearApps = onClearApps,
+        currentAppsJson = currentAppsJson,
+        onBulkEditApps = onBulkEditApps,
+    )
+    val catalogActions = CatalogActions(
+        onAddApp = onAddApp,
+        onUpdateApp = onUpdateApp,
+        onDeleteApp = onDeleteApp,
+        onTestFetchReleases = onTestFetchReleases,
+        onGetCatalogEntry = onGetCatalogEntry,
+    )
+    val listActions = AppListActions(
+        onRefresh = onRefresh,
+        onPrimaryAction = onPrimaryAction,
+        onCancelInstall = onCancelInstall,
+        onRequestUninstall = onRequestUninstall,
+    )
+
     if (isExpandedLayout) {
         ExpandedMainScreen(
             state = state,
-            onRefresh = onRefresh,
-            onPrimaryAction = onPrimaryAction,
-            onCancelInstall = onCancelInstall,
-            onRequestUninstall = onRequestUninstall,
+            listActions = listActions,
+            settingsActions = settingsActions,
+            catalogActions = catalogActions,
             onOpenSettings = onOpenSettings,
-            onSetThemeMode = onSetThemeMode,
-            onSetDynamicColor = onSetDynamicColor,
-            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
-            onSetRefreshOnStart = onSetRefreshOnStart,
-            onSetVersionCompareDepth = onSetVersionCompareDepth,
-            onSetGitHubToken = onSetGitHubToken,
-            onPickDownloadFolder = onPickDownloadFolder,
-            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
             onLoadHistory = onLoadHistory,
-            onAddApp = onAddApp,
-            onUpdateApp = onUpdateApp,
-            onDeleteApp = onDeleteApp,
-            onTestFetchReleases = onTestFetchReleases,
-            onGetCatalogEntry = onGetCatalogEntry,
-            onImportConfig = onImportConfig,
-            onExportConfig = onExportConfig,
-            onClearApps = onClearApps,
-            currentAppsJson = currentAppsJson,
-            onBulkEditApps = onBulkEditApps,
         )
     } else {
         CompactMainScreen(
             state = state,
-            onRefresh = onRefresh,
-            onPrimaryAction = onPrimaryAction,
-            onCancelInstall = onCancelInstall,
-            onRequestUninstall = onRequestUninstall,
+            listActions = listActions,
+            settingsActions = settingsActions,
+            catalogActions = catalogActions,
             onOpenSettings = onOpenSettings,
             onCloseSettings = onCloseSettings,
-            onSetThemeMode = onSetThemeMode,
-            onSetDynamicColor = onSetDynamicColor,
-            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
-            onSetRefreshOnStart = onSetRefreshOnStart,
-            onSetVersionCompareDepth = onSetVersionCompareDepth,
-            onSetGitHubToken = onSetGitHubToken,
-            onPickDownloadFolder = onPickDownloadFolder,
-            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
             onOpenAppDetails = onOpenAppDetails,
             onLoadHistory = onLoadHistory,
             onCloseAppDetails = onCloseAppDetails,
-            onAddApp = onAddApp,
-            onUpdateApp = onUpdateApp,
-            onDeleteApp = onDeleteApp,
-            onTestFetchReleases = onTestFetchReleases,
-            onGetCatalogEntry = onGetCatalogEntry,
-            onImportConfig = onImportConfig,
-            onExportConfig = onExportConfig,
-            onClearApps = onClearApps,
-            currentAppsJson = currentAppsJson,
-            onBulkEditApps = onBulkEditApps,
         )
     }
 }
+
+@Immutable
+private data class AppListActions(
+    val onRefresh: () -> Unit,
+    val onPrimaryAction: (ManagedApp) -> Unit,
+    val onCancelInstall: (String) -> Unit,
+    val onRequestUninstall: (String) -> Unit,
+)
+
+@Immutable
+private data class SettingsActions(
+    val onSetThemeMode: (ThemeMode) -> Unit,
+    val onSetDynamicColor: (Boolean) -> Unit,
+    val onSetDeleteApkAfterInstall: (Boolean) -> Unit,
+    val onSetRefreshOnStart: (Boolean) -> Unit,
+    val onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
+    val onSetGitHubToken: (String) -> Unit,
+    val onPickDownloadFolder: () -> Unit,
+    val onUseDefaultDownloadLocation: () -> Unit,
+    val onImportConfig: () -> Unit,
+    val onExportConfig: () -> Unit,
+    val onClearApps: () -> Unit,
+    val currentAppsJson: String,
+    val onBulkEditApps: (String) -> String?,
+)
+
+@Immutable
+private data class CatalogActions(
+    val onAddApp: (AppCatalogEntry) -> Unit,
+    val onUpdateApp: (Int, AppCatalogEntry) -> Unit,
+    val onDeleteApp: (Int) -> Unit,
+    val onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
+    val onGetCatalogEntry: (Int) -> AppCatalogEntry?,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CompactMainScreen(
     state: MainUiState,
-    onRefresh: () -> Unit,
-    onPrimaryAction: (ManagedApp) -> Unit,
-    onCancelInstall: (String) -> Unit,
-    onRequestUninstall: (String) -> Unit,
+    listActions: AppListActions,
+    settingsActions: SettingsActions,
+    catalogActions: CatalogActions,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
-    onSetThemeMode: (ThemeMode) -> Unit,
-    onSetDynamicColor: (Boolean) -> Unit,
-    onSetDeleteApkAfterInstall: (Boolean) -> Unit,
-    onSetRefreshOnStart: (Boolean) -> Unit,
-    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
-    onSetGitHubToken: (String) -> Unit,
-    onPickDownloadFolder: () -> Unit,
-    onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onLoadHistory: (String) -> Unit,
     onCloseAppDetails: () -> Unit,
-    onAddApp: (AppCatalogEntry) -> Unit,
-    onUpdateApp: (Int, AppCatalogEntry) -> Unit,
-    onDeleteApp: (Int) -> Unit,
-    onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
-    onGetCatalogEntry: (Int) -> AppCatalogEntry?,
-    onImportConfig: () -> Unit,
-    onExportConfig: () -> Unit,
-    onClearApps: () -> Unit,
-    currentAppsJson: String,
-    onBulkEditApps: (String) -> String?,
 ) {
     val navController = rememberNavController()
 
@@ -242,10 +249,7 @@ private fun CompactMainScreen(
         composable(LIST_ROUTE) {
             AppListScreen(
                 state = state,
-                onRefresh = onRefresh,
-                onPrimaryAction = onPrimaryAction,
-                onCancelInstall = onCancelInstall,
-                onRequestUninstall = onRequestUninstall,
+                actions = listActions,
                 onOpenSettings = {
                     onOpenSettings()
                     navController.navigate(SETTINGS_ROUTE)
@@ -285,30 +289,18 @@ private fun CompactMainScreen(
                     onCloseSettings()
                     navController.popBackStack()
                 },
-                onSetThemeMode = onSetThemeMode,
-                onSetDynamicColor = onSetDynamicColor,
-                onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
-                onSetRefreshOnStart = onSetRefreshOnStart,
-                onSetVersionCompareDepth = onSetVersionCompareDepth,
-                onSetGitHubToken = onSetGitHubToken,
-                onPickDownloadFolder = onPickDownloadFolder,
-                onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
-                onImportConfig = onImportConfig,
-                onExportConfig = onExportConfig,
-                onClearApps = onClearApps,
-                currentAppsJson = currentAppsJson,
-                onBulkEditApps = onBulkEditApps,
+                actions = settingsActions,
             )
         }
         composable(ADD_APP_ROUTE) {
             AddEditAppScreen(
                 existingEntry = null,
                 onSave = { entry ->
-                    onAddApp(entry)
+                    catalogActions.onAddApp(entry)
                     navController.popBackStack()
                 },
                 onDelete = null,
-                onTest = onTestFetchReleases,
+                onTest = catalogActions.onTestFetchReleases,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -317,18 +309,18 @@ private fun CompactMainScreen(
             arguments = listOf(navArgument("catalogId") { type = NavType.IntType }),
         ) { backStackEntry ->
             val catalogId = backStackEntry.arguments?.getInt("catalogId") ?: return@composable
-            val existingEntry = onGetCatalogEntry(catalogId) ?: return@composable
+            val existingEntry = catalogActions.onGetCatalogEntry(catalogId) ?: return@composable
             AddEditAppScreen(
                 existingEntry = existingEntry,
                 onSave = { entry ->
-                    onUpdateApp(catalogId, entry)
+                    catalogActions.onUpdateApp(catalogId, entry)
                     navController.popBackStack()
                 },
                 onDelete = {
-                    onDeleteApp(catalogId)
+                    catalogActions.onDeleteApp(catalogId)
                     navController.popBackStack(LIST_ROUTE, inclusive = false)
                 },
-                onTest = onTestFetchReleases,
+                onTest = catalogActions.onTestFetchReleases,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -339,31 +331,12 @@ private fun CompactMainScreen(
 @Composable
 private fun ExpandedMainScreen(
     state: MainUiState,
-    onRefresh: () -> Unit,
-    onPrimaryAction: (ManagedApp) -> Unit,
-    onCancelInstall: (String) -> Unit,
-    onRequestUninstall: (String) -> Unit,
+    listActions: AppListActions,
+    settingsActions: SettingsActions,
+    catalogActions: CatalogActions,
     onOpenSettings: () -> Unit,
-    onSetThemeMode: (ThemeMode) -> Unit,
-    onSetDynamicColor: (Boolean) -> Unit,
-    onSetDeleteApkAfterInstall: (Boolean) -> Unit,
-    onSetRefreshOnStart: (Boolean) -> Unit,
-    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
-    onSetGitHubToken: (String) -> Unit,
-    onPickDownloadFolder: () -> Unit,
-    onUseDefaultDownloadLocation: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onLoadHistory: (String) -> Unit,
-    onAddApp: (AppCatalogEntry) -> Unit,
-    onUpdateApp: (Int, AppCatalogEntry) -> Unit,
-    onDeleteApp: (Int) -> Unit,
-    onTestFetchReleases: suspend (String, String) -> List<GitHubReleaseResponse>,
-    onGetCatalogEntry: (Int) -> AppCatalogEntry?,
-    onImportConfig: () -> Unit,
-    onExportConfig: () -> Unit,
-    onClearApps: () -> Unit,
-    currentAppsJson: String,
-    onBulkEditApps: (String) -> String?,
 ) {
     val selectedApp = state.apps.firstOrNull { it.packageName == state.selectedPackageName }
     var editingCatalogId by remember { mutableStateOf<Int?>(null) }
@@ -375,39 +348,11 @@ private fun ExpandedMainScreen(
         }
     }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(state.errorMessage) {
-        state.errorMessage?.let { message ->
-            snackbarHostState.showSnackbar(
-                message = message,
-                duration = SnackbarDuration.Long,
-            )
-        }
-    }
+    val snackbarHostState = rememberErrorSnackbarHostState(state.errorMessage)
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("GitHub Updater") },
-                actions = {
-                    TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                        tooltip = { PlainTooltip { Text("Settings") } },
-                        state = rememberTooltipState(),
-                    ) {
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Rounded.Settings, contentDescription = "Settings")
-                        }
-                    }
-                },
-            )
-        },
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(modifier = Modifier.padding(12.dp)) { Text(data.visuals.message) }
-            }
-        },
+        topBar = { MainTopBar(onOpenSettings) },
+        snackbarHost = { ErrorSnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 isAddingApp = true
@@ -427,16 +372,13 @@ private fun ExpandedMainScreen(
             Box(modifier = Modifier.weight(0.42f)) {
                 AppListContent(
                     state = state,
-                    onRefresh = onRefresh,
-                    onPrimaryAction = onPrimaryAction,
-                    onCancelInstall = onCancelInstall,
-                    onRequestUninstall = onRequestUninstall,
-                     onOpenAppDetails = { packageName ->
-                         isAddingApp = false
-                         editingCatalogId = null
-                         onOpenAppDetails(packageName)
-                         onLoadHistory(packageName)
-                     },
+                    actions = listActions,
+                    onOpenAppDetails = { packageName ->
+                        isAddingApp = false
+                        editingCatalogId = null
+                        onOpenAppDetails(packageName)
+                        onLoadHistory(packageName)
+                    },
                     onEditApp = { catalogId ->
                         isAddingApp = false
                         editingCatalogId = catalogId
@@ -446,50 +388,34 @@ private fun ExpandedMainScreen(
             Box(modifier = Modifier.weight(0.58f)) {
                 when {
                     state.isSettingsOpen -> {
-                        SettingsContent(
-                            settings = state.settings,
-                            downloadLocationSummary = state.downloadLocationSummary,
-                            onSetThemeMode = onSetThemeMode,
-                            onSetDynamicColor = onSetDynamicColor,
-                            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
-                            onSetRefreshOnStart = onSetRefreshOnStart,
-                            onSetVersionCompareDepth = onSetVersionCompareDepth,
-                            onSetGitHubToken = onSetGitHubToken,
-                            onPickDownloadFolder = onPickDownloadFolder,
-                            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
-                            onImportConfig = onImportConfig,
-                            onExportConfig = onExportConfig,
-                            onClearApps = onClearApps,
-                            currentAppsJson = currentAppsJson,
-                            onBulkEditApps = onBulkEditApps,
-                        )
+                        SettingsPanel(state = state, actions = settingsActions)
                     }
                     isAddingApp -> {
                         AddEditAppScreen(
                             existingEntry = null,
                             onSave = { entry ->
-                                onAddApp(entry)
+                                catalogActions.onAddApp(entry)
                                 isAddingApp = false
                             },
                             onDelete = null,
-                            onTest = onTestFetchReleases,
+                            onTest = catalogActions.onTestFetchReleases,
                             onBack = { isAddingApp = false },
                         )
                     }
                     editingCatalogId != null -> {
-                        val existingEntry = onGetCatalogEntry(editingCatalogId!!)
+                        val existingEntry = catalogActions.onGetCatalogEntry(editingCatalogId!!)
                         if (existingEntry != null) {
                             AddEditAppScreen(
                                 existingEntry = existingEntry,
                                 onSave = { entry ->
-                                    onUpdateApp(editingCatalogId!!, entry)
+                                    catalogActions.onUpdateApp(editingCatalogId!!, entry)
                                     editingCatalogId = null
                                 },
                                 onDelete = {
-                                    onDeleteApp(editingCatalogId!!)
+                                    catalogActions.onDeleteApp(editingCatalogId!!)
                                     editingCatalogId = null
                                 },
-                                onTest = onTestFetchReleases,
+                                onTest = catalogActions.onTestFetchReleases,
                                 onBack = { editingCatalogId = null },
                             )
                         }
@@ -513,49 +439,18 @@ private fun ExpandedMainScreen(
 @Composable
 private fun AppListScreen(
     state: MainUiState,
-    onRefresh: () -> Unit,
-    onPrimaryAction: (ManagedApp) -> Unit,
-    onCancelInstall: (String) -> Unit,
-    onRequestUninstall: (String) -> Unit,
+    actions: AppListActions,
     onOpenSettings: () -> Unit,
     onOpenAppDetails: (String) -> Unit,
     onEditApp: (Int) -> Unit,
     onAddApp: () -> Unit,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarHostState = rememberErrorSnackbarHostState(state.errorMessage)
     val listState = rememberLazyListState()
 
-    LaunchedEffect(state.errorMessage) {
-        state.errorMessage?.let { message ->
-            snackbarHostState.showSnackbar(
-                message = message,
-                duration = SnackbarDuration.Long,
-            )
-        }
-    }
-
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("GitHub Updater") },
-                actions = {
-                    TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                        tooltip = { PlainTooltip { Text("Settings") } },
-                        state = rememberTooltipState(),
-                    ) {
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Rounded.Settings, contentDescription = "Settings")
-                        }
-                    }
-                },
-            )
-        },
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(modifier = Modifier.padding(12.dp)) { Text(data.visuals.message) }
-            }
-        },
+        topBar = { MainTopBar(onOpenSettings) },
+        snackbarHost = { ErrorSnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddApp) {
                 Icon(Icons.Rounded.Add, contentDescription = "Add app")
@@ -569,10 +464,7 @@ private fun AppListScreen(
         ) {
             AppListContent(
                 state = state,
-                onRefresh = onRefresh,
-                onPrimaryAction = onPrimaryAction,
-                onCancelInstall = onCancelInstall,
-                onRequestUninstall = onRequestUninstall,
+                actions = actions,
                 onOpenAppDetails = onOpenAppDetails,
                 onEditApp = onEditApp,
                 listState = listState,
@@ -584,10 +476,7 @@ private fun AppListScreen(
 @Composable
 private fun AppListContent(
     state: MainUiState,
-    onRefresh: () -> Unit,
-    onPrimaryAction: (ManagedApp) -> Unit,
-    onCancelInstall: (String) -> Unit,
-    onRequestUninstall: (String) -> Unit,
+    actions: AppListActions,
     onOpenAppDetails: (String) -> Unit,
     onEditApp: (Int) -> Unit,
     listState: LazyListState = rememberLazyListState(),
@@ -613,7 +502,7 @@ private fun AppListContent(
     PullToRefreshBox(
         state = pullToRefreshState,
         isRefreshing = state.isRefreshing,
-        onRefresh = onRefresh,
+        onRefresh = actions.onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
         LazyColumn(
@@ -657,9 +546,9 @@ private fun AppListContent(
                         app = app,
                         installProgress = state.installProgressByPackageName[app.packageName],
                         pendingAction = state.pendingActionsByPackageName[app.packageName],
-                        onPrimaryAction = { onPrimaryAction(app) },
-                        onCancelInstall = { onCancelInstall(app.packageName) },
-                        onRequestUninstall = { onRequestUninstall(app.packageName) },
+                        onPrimaryAction = { actions.onPrimaryAction(app) },
+                        onCancelInstall = { actions.onCancelInstall(app.packageName) },
+                        onRequestUninstall = { actions.onRequestUninstall(app.packageName) },
                         onOpenHistory = { onOpenAppDetails(app.packageName) },
                         onEditConfig = { onEditApp(app.catalogId) },
                     )
@@ -674,19 +563,7 @@ private fun AppListContent(
 private fun SettingsRouteScreen(
     state: MainUiState,
     onBack: () -> Unit,
-    onSetThemeMode: (ThemeMode) -> Unit,
-    onSetDynamicColor: (Boolean) -> Unit,
-    onSetDeleteApkAfterInstall: (Boolean) -> Unit,
-    onSetRefreshOnStart: (Boolean) -> Unit,
-    onSetVersionCompareDepth: (VersionCompareDepth) -> Unit,
-    onSetGitHubToken: (String) -> Unit,
-    onPickDownloadFolder: () -> Unit,
-    onUseDefaultDownloadLocation: () -> Unit,
-    onImportConfig: () -> Unit,
-    onExportConfig: () -> Unit,
-    onClearApps: () -> Unit,
-    currentAppsJson: String,
-    onBulkEditApps: (String) -> String?,
+    actions: SettingsActions,
 ) {
     Scaffold(
         topBar = {
@@ -706,25 +583,74 @@ private fun SettingsRouteScreen(
             )
         },
     ) { innerPadding ->
-        SettingsContent(
-            settings = state.settings,
-            downloadLocationSummary = state.downloadLocationSummary,
-            onSetThemeMode = onSetThemeMode,
-            onSetDynamicColor = onSetDynamicColor,
-            onSetDeleteApkAfterInstall = onSetDeleteApkAfterInstall,
-            onSetRefreshOnStart = onSetRefreshOnStart,
-            onSetVersionCompareDepth = onSetVersionCompareDepth,
-            onSetGitHubToken = onSetGitHubToken,
-            onPickDownloadFolder = onPickDownloadFolder,
-            onUseDefaultDownloadLocation = onUseDefaultDownloadLocation,
-            modifier = Modifier.padding(innerPadding),
-            onImportConfig = onImportConfig,
-            onExportConfig = onExportConfig,
-            onClearApps = onClearApps,
-            currentAppsJson = currentAppsJson,
-            onBulkEditApps = onBulkEditApps,
-        )
+        SettingsPanel(state = state, actions = actions, modifier = Modifier.padding(innerPadding))
     }
+}
+
+@Composable
+private fun SettingsPanel(
+    state: MainUiState,
+    actions: SettingsActions,
+    modifier: Modifier = Modifier,
+) {
+    SettingsContent(
+        settings = state.settings,
+        downloadLocationSummary = state.downloadLocationSummary,
+        onSetThemeMode = actions.onSetThemeMode,
+        onSetDynamicColor = actions.onSetDynamicColor,
+        onSetDeleteApkAfterInstall = actions.onSetDeleteApkAfterInstall,
+        onSetRefreshOnStart = actions.onSetRefreshOnStart,
+        onSetVersionCompareDepth = actions.onSetVersionCompareDepth,
+        onSetGitHubToken = actions.onSetGitHubToken,
+        onPickDownloadFolder = actions.onPickDownloadFolder,
+        onUseDefaultDownloadLocation = actions.onUseDefaultDownloadLocation,
+        modifier = modifier,
+        onImportConfig = actions.onImportConfig,
+        onExportConfig = actions.onExportConfig,
+        onClearApps = actions.onClearApps,
+        currentAppsJson = actions.currentAppsJson,
+        onBulkEditApps = actions.onBulkEditApps,
+    )
+}
+
+@Composable
+private fun rememberErrorSnackbarHostState(errorMessage: String?): SnackbarHostState {
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long,
+            )
+        }
+    }
+    return snackbarHostState
+}
+
+@Composable
+private fun ErrorSnackbarHost(snackbarHostState: SnackbarHostState) {
+    SnackbarHost(snackbarHostState) { data ->
+        Snackbar(modifier = Modifier.padding(12.dp)) { Text(data.visuals.message) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MainTopBar(onOpenSettings: () -> Unit) {
+    TopAppBar(
+        title = { Text("GitHub Updater") },
+        actions = {
+            TooltipBox(
+                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                tooltip = { PlainTooltip { Text("Settings") } },
+                state = rememberTooltipState(),
+            ) {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(Icons.Rounded.Settings, contentDescription = "Settings")
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -1099,31 +1025,12 @@ private fun ExpandedScreenPreview() {
     GitHubUpdaterTheme {
         ExpandedMainScreen(
             state = MainUiState(apps = apps, selectedPackageName = apps.first().packageName),
-            onRefresh = {},
-            onPrimaryAction = {},
-            onCancelInstall = {},
-            onRequestUninstall = {},
+            listActions = AppListActions({}, {}, {}, {}),
+            settingsActions = SettingsActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, "[]", { null }),
+            catalogActions = CatalogActions({}, { _, _ -> }, {}, { _, _ -> emptyList() }, { null }),
             onOpenSettings = {},
-            onSetThemeMode = {},
-            onSetDynamicColor = {},
-            onSetDeleteApkAfterInstall = {},
-            onSetRefreshOnStart = {},
-            onSetVersionCompareDepth = {},
-            onSetGitHubToken = {},
-            onPickDownloadFolder = {},
-            onUseDefaultDownloadLocation = {},
             onOpenAppDetails = {},
             onLoadHistory = {},
-            onAddApp = {},
-            onUpdateApp = { _, _ -> },
-            onDeleteApp = {},
-            onTestFetchReleases = { _, _ -> emptyList() },
-            onGetCatalogEntry = { null },
-            onImportConfig = {},
-            onExportConfig = {},
-            onClearApps = {},
-            currentAppsJson = "[]",
-            onBulkEditApps = { null },
         )
     }
 }
